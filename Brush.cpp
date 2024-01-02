@@ -1,0 +1,1070 @@
+// Copyright (c) 2023-2024 Steve Young
+// Licensed under the MIT License
+
+#include "Brush.h"
+#include "SPixelData.h"
+#include <random>
+
+Bristle::Bristle(FloatPointPair o, float fd)
+{
+	offset = o;
+	last_loc.x = 0.0;
+	last_loc.y = 0.0;
+	wander.x = 0.0;
+	wander.y = 0.0;
+	flow_difference = fd;
+	down = true;
+}
+
+FloatPointPair Bristle::GetOffset()
+{
+	FloatPointPair ret = offset;
+	ret.x += wander.x;
+	ret.y += wander.y;
+	return ret;
+}
+
+FloatPointPair Bristle::GetUnadjustedOffset()
+{
+	return offset;
+}
+
+float Bristle::GetFlowDiff()
+{
+	return flow_difference;
+}
+
+bool Bristle::AdjustOffset(FloatPointPair o)
+{
+	offset = o;
+	return true;
+}
+
+bool Bristle::AdjustWander(FloatPointPair w)
+{
+	wander.x += w.x;
+	wander.y += w.y;
+	//	if ((wander.x * wander.x + wander.y + wander.y) > 2.0)
+	//	{
+	wander.x = 0.9 * wander.x;
+	wander.y = 0.9 * wander.y;
+	//	}
+	return true;
+}
+
+bool Bristle::SetLast(FloatPointPair loc)
+{
+	last_loc = loc;
+	return true;
+}
+
+FloatPointPair Bristle::GetLast()
+{
+	return last_loc;
+}
+
+bool Bristle::GetBristleDown()
+{
+	return down;
+}
+
+bool Bristle::SetBristleDown(bool d)
+{
+	down = d;
+	return true;
+}
+
+Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_Properties prop)
+{
+	paint_prop = prop;
+	location = start;
+	color = c;
+	second = sec;
+	if (paint_prop.brush_width_override)
+	{
+		brush_width = paint_prop.brush_width;
+		num_bristles = brush_width * paint_prop.bristles;
+	}
+	else {
+		brush_width = w * paint_prop.brush_width_factor;
+		num_bristles = w * paint_prop.bristles;
+	}
+	brush_depth = d;
+
+	shape = paint_prop.shape;
+	orientation = 0.0;
+	float flow_scale;
+
+	if (paint_prop.paint_scale <= 0)
+	{
+		paint_prop.paint_scale = 0.01;
+	}
+	if (paint_prop.flow <= 0)
+	{
+		paint_prop.flow = 1.0;
+	}
+	if (paint_prop.flow > 100)
+	{
+		paint_prop.flow = 100.0;
+	}
+
+	flow_scale = 1.0;
+
+
+	paint_prop.flow = paint_prop.flow * flow_scale;
+	paint_prop.flow_variation = paint_prop.flow_variation * flow_scale;
+	if ((paint_prop.flow_variation + paint_prop.flow) > 100)
+	{
+		paint_prop.flow_variation = 100 - paint_prop.flow;
+	}
+	if (paint_prop.flow_variation < 0)
+	{
+		paint_prop.flow_variation = 0;
+	}
+
+	float radius = 0;
+	float direction = 0;
+	float fd = 0;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	std::uniform_real_distribution<> rad_dist(0, 1.0);
+	std::uniform_real_distribution<> direction_dist(0, 6.2832);
+	std::uniform_real_distribution<> flow_dist(-paint_prop.flow_variation, paint_prop.flow_variation);
+	std::uniform_real_distribution<> wide_dist(-brush_width, brush_width);
+	std::uniform_real_distribution<> deep_dist(-brush_depth, brush_depth);
+
+	bristle_kernel = (float**)malloc(sizeof(float*) * 3);
+	if (NULL == bristle_kernel)
+	{
+		throw std::runtime_error("Error allocating memory for bristle_kernel.\n");
+		return;
+	}
+	for (int i = 0; i <= 2; ++i)
+	{
+		bristle_kernel[i] = (float*)malloc(sizeof(float) * 3);
+		if (NULL == bristle_kernel[i])
+		{
+			throw std::runtime_error("Error allocating memory for bristle_kernel.\n");
+			return;
+		}
+		for (int j = 0; j <= 2; ++j)
+		{
+			bristle_kernel[i][j] = exp(-sqrt(i * i + j * j) * prop.bristle_thin_factor);
+		}
+	}
+
+	bristles.clear();
+	FloatPointPair o;
+	if (shape_test == shape)
+	{
+		num_bristles = 2 * brush_width;
+	}
+	for (int i = 0; i < num_bristles; ++i)
+	{
+		if (shape_round == shape)
+		{
+			radius = brush_width * sqrt(rad_dist(gen));
+			direction = direction_dist(gen);
+			fd = flow_dist(gen);
+			o.x = radius * cos(direction);
+			o.y = radius * sin(direction);
+		}
+		else if (shape_straight == shape)
+		{
+			fd = flow_dist(gen);
+			o.x = deep_dist(gen);
+			o.y = wide_dist(gen);
+		}
+		else if (shape_test == shape)
+		{
+			fd = 0;
+			o.x = 0;
+			o.y = -brush_width + 2 * brush_width * ((float)i / (float)num_bristles);
+		}
+		else
+		{
+			num_bristles = 1;
+			fd = 0;
+			o.x = 0;
+			o.y = 0;
+		}
+
+		bristles.push_back(new Bristle(o, fd));
+		if (NULL == bristles.back())
+		{
+			throw std::runtime_error("Failed to allocate memory for bristle.\n");
+			return;
+		}
+	}
+}
+
+Brush::~Brush()
+{
+	if (NULL != bristle_kernel)
+	{
+		for (int i = 0; i <= 2; ++i)
+		{
+			if (NULL != bristle_kernel[i])
+			{
+				free(bristle_kernel[i]);
+			}
+		}
+		free(bristle_kernel);
+	}
+	if (bristles.size() > 0)
+	{
+		for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
+		{
+			if (NULL != *it)
+			{
+				delete (*it);
+			}
+		}
+		bristles.clear();
+	}
+}
+
+
+bool Brush::MoveTo(FloatPointPair loc)
+{
+	//location.x = loc.x * paint_scale;
+	//location.y = loc.y * paint_scale;
+	location = loc;
+	return true;
+}
+
+bool Brush::PaintTo(FloatPointPair loc, float* data, int width, int height, SPixelData* mask, int mask_value, float rad1, float rad2)
+{
+	FloatPointPair p1, p2, p_temp;
+	float gradient;
+	float dr;
+	float r1 = rad1;
+	float r2 = rad2;
+	float curve_adjustment = paint_prop.paint_scale;
+	if (paint_prop.glitch1)
+	{
+		curve_adjustment = paint_prop.paint_scale;
+	}
+	float flow_adjustment = 1.0 / curve_adjustment;
+
+	if (rad1 < 0)
+	{
+		if (rad2 < 0)
+		{
+			r1 = brush_width;
+		}
+		else {
+			r1 = rad2;
+		}
+	}
+	if (rad2 < 0)
+	{
+		if (rad1 < 0)
+		{
+			r2 = brush_width;
+		}
+		else {
+			r2 = rad1;
+		}
+	}
+	int iterations;
+	FloatPointPair current_location;
+	p1 = location;
+	p2 = loc;
+	if ((p1.x == p2.x) && (p1.y == p2.y))
+	{
+		Dab2(data, width, height, mask, mask_value, -1.0, 1.0);
+		return true;
+	}
+	SetOrientation({ p2.x - p1.x , p2.y - p1.y });
+	bool steep = (abs(p1.y - p2.y) > abs(p1.x - p2.x));
+	if (steep)
+	{
+		if (p1.y > p2.y)
+		{
+			p_temp = p1;
+			p1 = p2;
+			p2 = p_temp;
+			dr = r1;
+			r1 = r2;
+			r2 = dr;
+		}
+		gradient = (float)(p2.x - p1.x) / (float)((p2.y - p1.y) * curve_adjustment);
+		dr = (float)(r2 - r1) / (float)((p2.y - p1.y) * curve_adjustment);
+		iterations = (p2.y - p1.y) * curve_adjustment;
+	}
+	else {
+		if (p1.x > p2.x)
+		{
+			p_temp = p1;
+			p1 = p2;
+			p2 = p_temp;
+			dr = r1;
+			r1 = r2;
+			r2 = dr;
+		}
+		gradient = (float)(p2.y - p1.y) / (float)((p2.x - p1.x) * curve_adjustment);
+		dr = (float)(r2 - r1) / (float)((p2.x - p1.x) * curve_adjustment);
+		iterations = (p2.x - p1.x) * curve_adjustment;
+	}
+	current_location = p1;
+	MoveTo(current_location);
+	Dab2(data, width, height, mask, mask_value, r1, flow_adjustment);
+	for (int i = 0; i < iterations; ++i)
+	{
+		if (steep)
+		{
+			current_location.y = current_location.y + flow_adjustment;
+			current_location.x = current_location.x + gradient;
+		}
+		else {
+			current_location.x = current_location.x + flow_adjustment;
+			current_location.y = current_location.y + gradient;
+		}
+		r1 += dr;
+		MoveTo(current_location);
+		Dab2(data, width, height, mask, mask_value, r1, flow_adjustment);
+	}
+	MoveTo(loc);
+	return true;
+}
+
+bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask, int mask_value, float rad1, float rad2, bool begin)
+{
+	FloatPointPair p1, p_temp, direction;
+	float gradient;
+	float dr;
+	float r1 = rad1;
+	float r2 = rad2;
+	float curve_adjustment = paint_prop.paint_scale;
+	float dorient = 0.0;
+	float orient1 = orientation;
+	float orient2;
+	float delta_orientation;
+
+	if (abs(o2.x) > EFFECTIVE_ZERO)
+	{
+		orient2 = atan2(o2.y, o2.x);
+		while (orient2 > 2 * M_PI)
+		{
+			orient2 -= 2 * M_PI;
+		}
+		while (orient2 < 0)
+		{
+			orient2 += 2 * M_PI;
+		}
+	}
+	else {
+		if (o2.y > 0)
+		{
+			orient2 = 1.5708;
+		}
+		else {
+			orient2 = -1.5708;
+		}
+	}
+
+	delta_orientation = orient2 - orient1;
+	if (abs(delta_orientation) > M_PI)
+	{
+		if (delta_orientation < 0)
+		{
+			delta_orientation += 2 * M_PI;
+		}
+		else {
+			delta_orientation -= 2 * M_PI;
+		}
+	}
+	if (paint_prop.glitch1)
+	{
+		curve_adjustment = paint_prop.paint_scale;  // *** Need to fix to reinstate glitch.
+	}
+
+
+	if (rad1 < 0)
+	{
+		if (rad2 < 0)
+		{
+			r1 = brush_width;
+		}
+		else {
+			r1 = rad2;
+		}
+	}
+	if (rad2 < 0)
+	{
+		if (rad1 < 0)
+		{
+			r2 = brush_width;
+		}
+		else {
+			r2 = rad1;
+		}
+	}
+	int iterations;
+	FloatPointPair current_location;
+	p1 = location;
+	if ((p1.x == p2.x) && (p1.y == p2.y))
+	{
+		Dab3(o2, data, width, height, mask, mask_value, r1, 1.0, begin); // *** Maybe consider just skipping here.
+		return true;
+	}
+	float dx, dy;
+	dx = p2.x - p1.x;
+	dy = p2.y - p1.y;
+	float dist = sqrt(dx * dx + dy * dy);
+	float factor;
+	if (r2 > r1)
+	{
+		factor = 1.0 + r2 * abs(tan(abs(delta_orientation))) / dist;  // *** Check for this going to infinity (or just very large).  Use MAX_CURVE_FACTOR for now.
+	}
+	else {
+		factor = 1.0 + r1 * abs(tan(abs(delta_orientation))) / dist;
+	}
+	if (factor < 1.0)
+	{
+		factor = 1.0;
+	}
+	else if (factor > MAX_CURVE_FACTOR)
+	{
+		factor = MAX_CURVE_FACTOR;
+	}
+
+	curve_adjustment = curve_adjustment * factor;
+	float flow_adjustment = 1.0 / curve_adjustment;
+
+	bool steep = (abs(p1.y - p2.y) > abs(p1.x - p2.x));
+	int step;
+	if (steep)
+	{
+		if (p1.y > p2.y)
+		{
+			step = -1;
+		}
+		else {
+			step = 1;
+		}
+		gradient = step * (float)(p2.x - p1.x) / (float)((p2.y - p1.y) * curve_adjustment);
+		dr = step * (float)(r2 - r1) / (float)((p2.y - p1.y) * curve_adjustment);
+		dorient = step * delta_orientation / (float)((p2.y - p1.y) * curve_adjustment);
+		iterations = abs(p2.y - p1.y) * curve_adjustment;
+	}
+	else {
+		if (p1.x > p2.x)
+		{
+			step = -1;
+		}
+		else {
+			step = 1;
+		}
+		gradient = step * (float)(p2.y - p1.y) / (float)((p2.x - p1.x) * curve_adjustment);
+		dr = step * (float)(r2 - r1) / (float)((p2.x - p1.x) * curve_adjustment);
+		dorient = step * delta_orientation / (float)((p2.x - p1.x) * curve_adjustment);
+		iterations = abs(p2.x - p1.x) * curve_adjustment;
+	}
+	current_location = p1;
+
+	direction.x = cos(orient1);
+	direction.y = sin(orient1);
+	Dab3(direction, data, width, height, mask, mask_value, r1, 1.0, begin);  // *** No longer need flow_adjustment?
+	for (int i = 0; i < iterations; ++i)
+	{
+		if (steep)
+		{
+			current_location.y = current_location.y + step * flow_adjustment;
+			current_location.x = current_location.x + gradient;
+		}
+		else {
+			current_location.x = current_location.x + step * flow_adjustment;
+			current_location.y = current_location.y + gradient;
+		}
+		r1 += dr;
+		orient1 += dorient;
+		if (orient1 > 2 * M_PI)
+		{
+			orient1 -= 2 * M_PI;
+		}
+		else if (orient1 < 0)
+		{
+			orient1 += 2 * M_PI;
+		}
+		direction.x = cos(orient1);
+		direction.y = sin(orient1);
+		MoveTo(current_location);
+		SetOrientation(orient1);
+		Dab3(direction, data, width, height, mask, mask_value, r1, 1.0, false);
+	}
+	MoveTo(p2);
+	SetOrientation(orient2);
+	return true;
+}
+
+bool Brush::ChangeColor(Color c, Color sec)
+{
+	color = c;
+	second = sec;
+	return true;
+}
+
+bool Brush::Dab(unsigned char* data, int width, int height)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	std::uniform_real_distribution<> Adjust(0, 1);
+	std::uniform_int_distribution<> Adjust_x(-1, 1);
+	std::uniform_int_distribution<> Adjust_y(-1, 1);
+
+	Bristle* bristle;
+	int count = 0;
+	for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
+	{
+		count++;
+		Color bristle_color;
+		if (0 == count % 50)
+		{
+			bristle_color = second;
+		}
+		else {
+			bristle_color = color;
+		}
+		bristle = *it;
+		FloatPointPair offset = bristle->GetOffset();
+		int x = location.x + offset.x;
+		int y = location.y + offset.y;
+		float flow_diff = bristle->GetFlowDiff();
+		float channels[3];
+
+		if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
+		{
+			for (int i = 0; i < 3; ++i)
+			{
+				long pos = y * width * 3 + x * 3 + i;
+				if (data[pos] > bristle_color.channel[i]) // Brighter background
+				{
+					//					channels[i] = ((float)data[pos] - (flow_diff + flow) * (float)bristle_color.channel[i]) / 100.0 + (float)data[pos];
+					channels[i] = ((flow_diff + paint_prop.flow) * (float)bristle_color.channel[i] + (100 - flow_diff - paint_prop.flow) * (float)data[pos]) / 100.0;
+					if (channels[i] < bristle_color.channel[i])
+					{
+						data[pos] = bristle_color.channel[i];
+					}
+					else if (channels[i] > 255)
+					{
+						data[pos] = 255;
+					}
+					else {
+						data[pos] = (unsigned char)channels[i];
+					}
+				}
+				else { // Dimmer background
+					//					channels[i] = ((float)data[pos] + (flow_diff + flow) * (float)bristle_color.channel[i]) / 100.0 + (float)data[pos];
+					channels[i] = ((flow_diff + paint_prop.flow) * (float)bristle_color.channel[i] + (100 - flow_diff - paint_prop.flow) * (float)data[pos]) / 100.0;
+					if (channels[i] < 0)
+					{
+						data[pos] = 0;
+					}
+					else if (channels[i] > bristle_color.channel[i])
+					{
+						data[pos] = bristle_color.channel[i];
+					}
+					else {
+						data[pos] = (unsigned char)channels[i];
+					}
+				}
+			}
+		}
+		if (Adjust(gen) < 0.1)
+		{
+			FloatPointPair offset = bristle->GetOffset();
+			if (offset.x * offset.x + offset.y * offset.y > brush_width * brush_width * 0.95)
+			{
+				if (offset.x > 0)
+				{
+					--offset.x;
+				}
+				else {
+					++offset.x;
+				}
+				if (offset.y > 0)
+				{
+					--offset.y;
+				}
+				else {
+					++offset.y;
+				}
+			}
+			else {
+				offset.x += Adjust_x(gen);
+				offset.y += Adjust_y(gen);
+			}
+
+			bristle->AdjustOffset(offset);
+		}
+	}
+	return true;
+}
+
+bool Brush::Dab2(float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, float flow_adjustment)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	std::uniform_real_distribution<> Adjust(0, 1);
+	std::uniform_int_distribution<> Adjust_x(-1, 1);
+	std::uniform_int_distribution<> Adjust_y(-1, 1);
+
+	Bristle* bristle;
+	FloatPointPair oriented_location;
+	FloatPointPair raw_oriented_location;
+	float c_value = cos(orientation);
+	float s_value = sin(orientation);
+	int mask_width = mask->GetWidth();
+	int mask_height = mask->GetHeight();
+
+	int count = 0;
+	for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
+	{
+		count++;
+		Color bristle_color;
+		if (0 == count % 50)
+		{
+			bristle_color = second;
+		}
+		else {
+			bristle_color = color;
+		}
+		bristle = *it;
+		FloatPointPair offset = bristle->GetOffset();
+		oriented_location.x = paint_prop.paint_scale * (c_value * offset.x - s_value * offset.y);
+		oriented_location.y = paint_prop.paint_scale * (c_value * offset.y + s_value * offset.x);
+		FloatPointPair raw_offset = bristle->GetUnadjustedOffset();
+		float x = c_value * raw_offset.x - s_value * raw_offset.y + location.x;
+		float y = c_value * raw_offset.y + s_value * raw_offset.x + location.y;
+		if ((NULL == mask) || ((x >= 0) && (x < mask_width) && (y >= 0) && (y < mask_height) && (mask_value == mask->GetPixel(x, y))))
+		{
+			float flow_diff = bristle->GetFlowDiff();
+			float channels[3];
+
+			if ((spot_radius < 0) || ((oriented_location.x * oriented_location.x + oriented_location.y * oriented_location.y) < (spot_radius * spot_radius * paint_prop.paint_scale * paint_prop.paint_scale)))
+			{
+				for (int i = -2; i <= 2; ++i)
+				{
+					for (int j = -2; j <= 2; ++j)
+					{
+						float adjustment;
+
+
+						x = paint_prop.paint_scale * location.x + oriented_location.x + i;
+						y = paint_prop.paint_scale * location.y + oriented_location.y + j;
+						if (paint_prop.sub_pixel)
+						{
+							adjustment = flow_adjustment * KernelAdjustment(i, j, x, y);
+						}
+						else {
+							adjustment = flow_adjustment * bristle_kernel[abs(i)][abs(j)];
+						}
+
+						float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
+						if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
+						{
+							for (int color_index = 0; color_index < 3; ++color_index)
+							{
+								long pos = (int)y * width * 3 + (int)x * 3 + color_index;
+								if (data[pos] > bristle_color.channel[color_index]) // Brighter background
+								{
+									channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100 - adjusted_flow) * (float)data[pos]) / 100.0;
+									if (channels[color_index] < bristle_color.channel[color_index])
+									{
+										data[pos] = bristle_color.channel[color_index];
+									}
+									else if (channels[color_index] > 255)
+									{
+										data[pos] = 255;
+									}
+									else {
+										if (paint_prop.glitch2)
+										{
+											data[pos] = (float)((unsigned char)channels[color_index]);
+										}
+										else {
+											data[pos] = channels[color_index];
+										}
+									}
+								}
+								else { // Dimmer background
+									channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100 - adjusted_flow) * (float)data[pos]) / 100.0;
+									if (channels[color_index] < 0)
+									{
+										data[pos] = 0;
+									}
+									else if (channels[color_index] > bristle_color.channel[color_index])
+									{
+										data[pos] = bristle_color.channel[color_index];
+									}
+									else {
+										if (paint_prop.glitch2)
+										{
+											data[pos] = (float)((unsigned char)channels[color_index]);
+										}
+										else {
+											data[pos] = channels[color_index];
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		if (Adjust(gen) < 0.1)
+		{
+			offset.x = Adjust_x(gen);
+			offset.y = Adjust_y(gen);
+			bristle->AdjustWander(offset);
+		}
+	}
+	return true;
+}
+
+bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, float flow_adjustment, bool begin)
+{
+	// Use direction to measure whether the movement has been forward.
+
+	// Need to normalize direction? *** Maybe not.
+	float dir_dist = sqrt(direction.x * direction.x + direction.y * direction.y);
+	bool pos_dir = dir_dist > EFFECTIVE_ZERO;
+	if (pos_dir)
+	{
+		direction.x = direction.x / dir_dist;
+		direction.y = direction.y / dir_dist;
+	}
+	float scaled_spot_radius_squared = spot_radius * spot_radius * paint_prop.paint_scale * paint_prop.paint_scale;
+	bool new_stroke = false;
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	std::uniform_real_distribution<> Adjust(0, 1);
+	std::uniform_int_distribution<> Adjust_x(-1, 1);  // *** Consider reducing the wander limits.  And maybe not a uniform distribution.
+	std::uniform_int_distribution<> Adjust_y(-1, 1);
+
+	Bristle* bristle;
+	FloatPointPair oriented_location;  // Location of bristle based on bristle offset and orientation of brush (location relative to brush center).
+
+	float c_value = cos(orientation);
+	float s_value = sin(orientation);
+	int mask_width = mask->GetWidth();
+	int mask_height = mask->GetHeight();
+
+	int count = 0;
+	for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
+	{
+		count++;
+		new_stroke = false; // Default.
+		Color bristle_color;
+		if (0 == count % 50)
+		{
+			bristle_color = second;
+		}
+		else {
+			bristle_color = color;
+		}
+		bristle = *it;
+		FloatPointPair offset = bristle->GetOffset();
+		oriented_location.x = paint_prop.paint_scale * (c_value * offset.x - s_value * offset.y);
+		oriented_location.y = paint_prop.paint_scale * (c_value * offset.y + s_value * offset.x);
+		FloatPointPair raw_offset = bristle->GetUnadjustedOffset();  // Offset location of bristle without taking into account wander (relative to brush center).
+		float x = c_value * raw_offset.x - s_value * raw_offset.y + location.x;  // Absolute location of bristle (not relative to brush center), without wander.
+		float y = c_value * raw_offset.y + s_value * raw_offset.x + location.y;
+		FloatPointPair bristle_location;  // Absolute location of bristle (not relative to brush center), with wander.
+		bristle_location.x = paint_prop.paint_scale * location.x + oriented_location.x;
+		bristle_location.y = paint_prop.paint_scale * location.y + oriented_location.y;
+		FloatPointPair last;  // Where was the last place the bristle was painted?
+		float movement_distance = 0;  // How far has bristle moved since last painted spot?
+		float dot_product = 0; // What is the direction of bristle movement when compared to brush movement?  Positive is same general direction.
+		float flow_diff = bristle->GetFlowDiff();
+		float channels[3];
+		if (begin)
+		{
+			new_stroke = true;
+			bristle->SetLast(bristle_location);
+			bristle->SetBristleDown(true);
+		}
+		else
+		{
+			last = bristle->GetLast();
+			FloatPointPair bristle_movement;
+			bristle_movement.x = bristle_location.x - last.x;
+			bristle_movement.y = bristle_location.y - last.y;
+			movement_distance = bristle_movement.x * bristle_movement.x + bristle_movement.y * bristle_movement.y;
+			dot_product = bristle_movement.x * direction.x + bristle_movement.y * direction.y;
+		}
+		if (((NULL == mask) || ((x >= 0) && (x < mask_width) && (y >= 0) && (y < mask_height) && (mask_value == mask->GetPixel(x, y)))) &&
+			((spot_radius < 0) || ((oriented_location.x * oriented_location.x + oriented_location.y * oriented_location.y) < scaled_spot_radius_squared)) &&
+			(dot_product >= 0))
+		{
+			if (false == bristle->GetBristleDown())  // Newly in writeable area.
+			{
+				new_stroke = true;
+				bristle->SetLast(bristle_location);
+				bristle->SetBristleDown(true);
+			}
+		}
+		else {  // Outside of mask or writeable area.
+			bristle->SetBristleDown(false);
+		}
+		if ((bristle->GetBristleDown()) &&  // First, make sure bristle is down.
+			(new_stroke || ((movement_distance >= 1.0))))  // But we also need to either have a new stroke or sufficient movement distance.
+		{
+			bristle->SetLast(bristle_location);
+			for (int i = -2; i <= 2; ++i)
+			{
+				for (int j = -2; j <= 2; ++j)
+				{
+					float adjustment;
+					x = bristle_location.x + i;
+					y = bristle_location.y + j;
+					if (paint_prop.sub_pixel)
+					{
+						adjustment = flow_adjustment * KernelAdjustment(i, j, x, y);
+					}
+					else {
+						adjustment = flow_adjustment * bristle_kernel[abs(i)][abs(j)];
+					}
+
+					float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
+					if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
+					{
+						for (int color_index = 0; color_index < 3; ++color_index)
+						{
+							long pos = (int)y * width * 3 + (int)x * 3 + color_index;
+							if (data[pos] > bristle_color.channel[color_index]) // Brighter background
+							{
+								channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100 - adjusted_flow) * (float)data[pos]) / 100.0;
+								if (channels[color_index] < bristle_color.channel[color_index])
+								{
+									data[pos] = bristle_color.channel[color_index];
+								}
+								else if (channels[color_index] > 255)
+								{
+									data[pos] = 255;
+								}
+								else {
+									if (paint_prop.glitch2)
+									{
+										data[pos] = (float)((unsigned char)channels[color_index]);
+									}
+									else {
+										data[pos] = channels[color_index];
+									}
+								}
+							}
+							else { // Dimmer background
+								channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100 - adjusted_flow) * (float)data[pos]) / 100.0;
+								if (channels[color_index] < 0)
+								{
+									data[pos] = 0;
+								}
+								else if (channels[color_index] > bristle_color.channel[color_index])
+								{
+									data[pos] = bristle_color.channel[color_index];
+								}
+								else {
+									if (paint_prop.glitch2)
+									{
+										data[pos] = (float)((unsigned char)channels[color_index]);
+									}
+									else {
+										data[pos] = channels[color_index];
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (Adjust(gen) < 0.1)
+		{
+			offset.x = Adjust_x(gen);
+			offset.y = Adjust_y(gen);
+			bristle->AdjustWander(offset);
+		}
+	}
+	return true;
+}
+
+bool Brush::PaintCorner(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool variable_radius)
+{
+	float chord_length = sqrt((corner.p0.x - corner.p1.x) * (corner.p0.x - corner.p1.x) + (corner.p0.y - corner.p1.y) * (corner.p0.y - corner.p1.y));
+	float leg1 = sqrt((corner.p0.x - corner.c0.x) * (corner.p0.x - corner.c0.x) + (corner.p0.y - corner.c0.y) * (corner.p0.y - corner.c0.y));
+	float leg2 = sqrt((corner.c1.x - corner.c0.x) * (corner.c1.x - corner.c0.x) + (corner.c1.y - corner.c0.y) * (corner.c1.y - corner.c0.y));
+	float leg3 = sqrt((corner.p1.x - corner.c1.x) * (corner.p1.x - corner.c1.x) + (corner.p1.y - corner.c1.y) * (corner.p1.y - corner.c1.y));
+	float length_est = paint_prop.paint_scale * (chord_length + leg1 + leg2 + leg3) / 2.0;
+	float local_radius = -1;
+	float dr = 0;
+	FloatPointPair L1, L2, L3, M1, M2, N1;
+	float flow_adjustment = 1.0 / (float)(CURVE_ADJUSTMENT * paint_prop.paint_scale);
+
+	int n = (int)length_est * CURVE_ADJUSTMENT + 1;
+	if (variable_radius)
+	{
+		local_radius = corner.radius_p0;
+		dr = (corner.radius_p1 - corner.radius_p0) / (float)n;
+	}
+	for (int i = 0; i < n; ++i)
+	{
+		float p = (float)i / (float)n; // Parameter goes from 0 to 1.0;
+		float np = 1.0 - p;
+		L1.x = corner.c0.x * p + corner.p0.x * np;
+		L1.y = corner.c0.y * p + corner.p0.y * np;
+		L2.x = corner.c1.x * p + corner.c0.x * np;
+		L2.y = corner.c1.y * p + corner.c0.y * np;
+		L3.x = corner.p1.x * p + corner.c1.x * np;
+		L3.y = corner.p1.y * p + corner.c1.y * np;
+		M1.x = L2.x * p + L1.x * np;
+		M1.y = L2.y * p + L1.y * np;
+		M2.x = L3.x * p + L2.x * np;
+		M2.y = L3.y * p + L2.y * np;
+		N1.x = M2.x * p + M1.x * np;
+		N1.y = M2.y * p + M1.y * np;
+		MoveTo(N1);
+		SetOrientation({ M2.x - M1.x, M2.y - M1.y });
+
+		Dab2(data, width, height, mask, mask_value, local_radius, flow_adjustment);
+		local_radius += dr;
+	}
+	return true;
+}
+
+bool Brush::PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool variable_radius)
+{
+	float chord_length = sqrt((corner.p0.x - corner.p1.x) * (corner.p0.x - corner.p1.x) + (corner.p0.y - corner.p1.y) * (corner.p0.y - corner.p1.y));
+	float leg1 = sqrt((corner.p0.x - corner.c0.x) * (corner.p0.x - corner.c0.x) + (corner.p0.y - corner.c0.y) * (corner.p0.y - corner.c0.y));
+	float leg2 = sqrt((corner.c1.x - corner.c0.x) * (corner.c1.x - corner.c0.x) + (corner.c1.y - corner.c0.y) * (corner.c1.y - corner.c0.y));
+	float leg3 = sqrt((corner.p1.x - corner.c1.x) * (corner.p1.x - corner.c1.x) + (corner.p1.y - corner.c1.y) * (corner.p1.y - corner.c1.y));
+	float length_est = paint_prop.paint_scale * (chord_length + leg1 + leg2 + leg3) / 2.0;
+	float local_radius = -1;
+	float dr = 0;
+	FloatPointPair L1, L2, L3, M1, M2, N1;
+	FloatPointPair direction;
+	//float flow_adjustment = 1.0 / paint_scale;
+
+	int n = (int)length_est + 1;
+	if (variable_radius)
+	{
+		local_radius = corner.radius_p0;
+		dr = (corner.radius_p1 - corner.radius_p0) / (float)n;
+	}
+	MoveTo(corner.p0);
+	direction.x = corner.c0.x - corner.p0.x;
+	direction.y = corner.c0.y - corner.p0.y;
+	if ((abs(direction.x) <= EFFECTIVE_ZERO) && (abs(direction.y) <= EFFECTIVE_ZERO))
+	{
+		direction.x = corner.c1.x - corner.p0.x;
+		direction.y = corner.c1.y - corner.p0.y;
+	}
+	SetOrientation(direction);
+
+	for (int i = 0; i < n; ++i)
+	{
+		float p = (float)i / (float)n; // Parameter goes from 0 to 1.0;
+		float np = 1.0 - p;
+		L1.x = corner.c0.x * p + corner.p0.x * np;
+		L1.y = corner.c0.y * p + corner.p0.y * np;
+		L2.x = corner.c1.x * p + corner.c0.x * np;
+		L2.y = corner.c1.y * p + corner.c0.y * np;
+		L3.x = corner.p1.x * p + corner.c1.x * np;
+		L3.y = corner.p1.y * p + corner.c1.y * np;
+		M1.x = L2.x * p + L1.x * np;
+		M1.y = L2.y * p + L1.y * np;
+		M2.x = L3.x * p + L2.x * np;
+		M2.y = L3.y * p + L2.y * np;
+		N1.x = M2.x * p + M1.x * np;
+		N1.y = M2.y * p + M1.y * np;
+		direction.x = M2.x - M1.x;
+		direction.y = M2.y - M1.y;
+		PaintTo2(N1, direction, data, width, height, mask, mask_value, local_radius, (local_radius + dr), 0 == i);
+		local_radius += dr;
+	}
+	return true;
+}
+
+bool Brush::SetOrientation(FloatPointPair o)
+{
+
+	if (abs(o.x) > EFFECTIVE_ZERO)
+	{
+		SetOrientation(atan2(o.y, o.x));
+	}
+	else {
+		if (o.y > 0)
+		{
+			orientation = M_PI / 2;
+		}
+		else {
+			orientation = 3 * M_PI / 2;
+		}
+	}
+	return true;
+}
+
+bool Brush::SetOrientation(float o)
+{
+	while (o > 2 * M_PI)
+	{
+		o -= 2 * M_PI;
+	}
+	while (o < 0)
+	{
+		o += 2 * M_PI;
+	}
+	orientation = o;
+	return true;
+}
+
+float Brush::GetOrientation()
+{
+	return orientation;
+}
+
+float Brush::KernelAdjustment(int i, int j, float x, float y)
+{
+	float ret = 0;
+	float mx = x - (int)x; // Mod 1 of the x centerpoint.
+	float my = y - (int)y; // Mod 1 of the y centerpoint.
+	float nmx = 1.0 - mx;
+	float nmy = 1.0 - my;
+
+	float f00, f10, f01, f11;
+	f00 = nmx * nmy;
+	f01 = nmx * my;
+	f10 = mx * nmy;
+	f11 = mx * my;
+
+	int k = i;
+	int l = j;
+	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	{
+		ret += bristle_kernel[abs(k)][abs(l)] * f00;
+	}
+	k--;
+	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	{
+		ret += bristle_kernel[abs(k)][abs(l)] * f10;
+	}
+	l--;
+	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	{
+		ret += bristle_kernel[abs(k)][abs(l)] * f11;
+	}
+	k++;
+	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	{
+		ret += bristle_kernel[abs(k)][abs(l)] * f01;
+	}
+	return ret;
+}
