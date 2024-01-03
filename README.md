@@ -60,6 +60,43 @@ path="C:\path\to\output\files"
 
 6. The main output is a file named "output.png," which contains the transformed artwork. If `poly` is set, an additional "output.svg" file with polygon representations is generated. If `poly` is used along with post-processing (e.g., with the "p" flag), "output_post.svg" is also created. "output_paint.png" contains the version of the output with painted effects.
 
+##Examples
+
+Here is an example using this image:
+
+<img src="examples\Planters.png" alt="Planters" />
+
+The command to process it is:
+
+```
+.\Image_Art.exe filename="Planters.png" xdiv=185 ydiv=185 c=1 nc=3 erode=1 dilate=1 w=185 fine=1 poly=1 colormatch=25
+```
+
+The command will take a little while to run, while outputting various information to the command window (see the source code for what this all means).  Along the way, it will generate several files.  Among them are:
+
+<img src="examples\output_gray.png" alt="Grayscale image">
+
+This is the grayscaled image using the difference between the red and blue color channels.
+
+<img src="examples\output_edge.png" alt="Gradient image">
+
+This is the gradient image generated from the grayscale, using the 185 pixel disc structuring elements for morphological opening followed by closing (erosion, two dilations, and another erosion).
+
+<img src="examples\output.png">
+
+This is one of the main outputs, and is a raster image of the same size as the input image.  While interesting, it shows a lot of pixelation.
+
+<img src="examples\SuperPixels.svg">
+
+This is a line-art SVG version of the earlier output, which may be more useful for further work, as it is resolution independent.
+
+<img src="examples\output_skeleton.png">
+
+This is an output used for diagnostics.  It breaks each shape down to a one pixel wide skeleton.
+
+<img src="examples\output_paint.png">
+
+This is another raster output image, which shows the paint style effect.
 
 
 
