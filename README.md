@@ -64,7 +64,7 @@ path="C:\path\to\output\files"
 
 Here is an example using this image:
 
-![Planters](Examples/planters.png)
+![Planters](Examples/Planters.png)
 
 The command to process it is:
 
@@ -74,7 +74,7 @@ The command to process it is:
 
 The command will take a little while to run, while outputting various information to the command window (see the source code for what this all means).  Along the way, it will generate several files.  Among them are:
 
-![Grayscale image](Examples/output.gray.png)
+![Grayscale image](Examples/output_gray.png)
 
 This is the grayscaled image using the difference between the red and blue color channels.
 
