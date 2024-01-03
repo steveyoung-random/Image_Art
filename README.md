@@ -32,11 +32,11 @@ This is a command line application.  You pass various pairs of tags and values t
 
 2. Type a command in this form to run ImageArt (replace `Imageart.exe` with the appropriate executable name for your platform):
 
-Imageart.exe tag1=value1 tag2=value2 ...
+	`Imageart.exe tag1=value1 tag2=value2 ...`
 
 3. Specify the input image using the `filename` tag in the Windows path convention:
 
-filename="C:\path\to\your\image.jpg"
+	`filename="C:\path\to\your\image.jpg"`
 
 4. Customize your artwork using additional tags and values, as needed. For example:
 
@@ -56,7 +56,7 @@ filename="C:\path\to\your\image.jpg"
 
 5. Specify the output directory using the `path` tag (if different from the default "d:\temp"):
 
-path="C:\path\to\output\files"
+	`path="C:\path\to\output\files"`
 
 6. The main output is a file named "output.png," which contains the transformed artwork. If `poly` is set, an additional "output.svg" file with polygon representations is generated. If `poly` is used along with post-processing (e.g., with the "p" flag), "output_post.svg" is also created. "output_paint.png" contains the version of the output with painted effects.
 
