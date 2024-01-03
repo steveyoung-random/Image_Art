@@ -82,21 +82,21 @@ This is the grayscaled image using the difference between the red and blue color
 
 This is the gradient image generated from the grayscale, using the 185 pixel disc structuring elements for morphological opening followed by closing (erosion, two dilations, and another erosion).
 
-<img src="examples\output.png">
+<img src="blob/master/examples/output.png">
 
 This is one of the main outputs, and is a raster image of the same size as the input image.  While interesting, it shows a lot of pixelation.
 
-<img src="examples\SuperPixels.svg">
+<img src="blob/master/examples/SuperPixels.svg">
 
 This is a line-art SVG version of the earlier output, which may be more useful for further work, as it is resolution independent.
 
-<img src="examples\output_skeleton.png">
+<img src="blob/master/examples/output_skeleton.png">
 
 This is an output used for diagnostics.  It breaks each shape down to a one pixel wide skeleton.
 
-<img src="examples\output_paint.png">
+<img src="blob/master/examples/output_paint.png">
 
-This is another raster output image, which shows the paint style effect.
+This is another raster output image, which shows the paint style effect.  This version has been downsized, because the original was a bit large.
 
 
 
