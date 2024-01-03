@@ -74,7 +74,7 @@ The command to process it is:
 
 The command will take a little while to run, while outputting various information to the command window (see the source code for what this all means).  Along the way, it will generate several files.  Among them are:
 
-<img src="examples\output_gray.png" alt="Grayscale image">
+![Grayscale image](Examples/output.gray.png)
 
 This is the grayscaled image using the difference between the red and blue color channels.
 
