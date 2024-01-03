@@ -64,7 +64,7 @@ path="C:\path\to\output\files"
 
 Here is an example using this image:
 
-<img src="examples\Planters.png" alt="Planters" />
+![Planters](Examples/planters.png)
 
 The command to process it is:
 
@@ -78,23 +78,23 @@ The command will take a little while to run, while outputting various informatio
 
 This is the grayscaled image using the difference between the red and blue color channels.
 
-<img src="examples\output_edge.png" alt="Gradient image">
+![Gradient image](Examples/output_edge.png)
 
 This is the gradient image generated from the grayscale, using the 185 pixel disc structuring elements for morphological opening followed by closing (erosion, two dilations, and another erosion).
 
-<img src="blob/master/examples/output.png">
+![Output image](Examples/output.png)
 
 This is one of the main outputs, and is a raster image of the same size as the input image.  While interesting, it shows a lot of pixelation.
 
-<img src="blob/master/examples/SuperPixels.svg">
+![SVG image](Examples/SuperPixels.svg)
 
 This is a line-art SVG version of the earlier output, which may be more useful for further work, as it is resolution independent.
 
-<img src="blob/master/examples/output_skeleton.png">
+![Skeleton image](Examples/outpu_skeleton.png)
 
 This is an output used for diagnostics.  It breaks each shape down to a one pixel wide skeleton.
 
-<img src="blob/master/examples/output_paint.png">
+![Painted image](Examples/output_paint.png)
 
 This is another raster output image, which shows the paint style effect.  This version has been downsized, because the original was a bit large.
 
