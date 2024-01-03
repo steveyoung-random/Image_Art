@@ -60,7 +60,7 @@ path="C:\path\to\output\files"
 
 6. The main output is a file named "output.png," which contains the transformed artwork. If `poly` is set, an additional "output.svg" file with polygon representations is generated. If `poly` is used along with post-processing (e.g., with the "p" flag), "output_post.svg" is also created. "output_paint.png" contains the version of the output with painted effects.
 
-##Examples
+## Example
 
 Here is an example using this image:
 
