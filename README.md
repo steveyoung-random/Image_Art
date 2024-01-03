@@ -76,27 +76,27 @@ The command will take a little while to run, while outputting various informatio
 
 ![Grayscale image](Examples/output_gray.png)
 
-This is the grayscaled image using the difference between the red and blue color channels.
+Above is the grayscaled image using the difference between the red and blue color channels.
 
 ![Gradient image](Examples/output_edge.png)
 
-This is the gradient image generated from the grayscale, using the 185 pixel disc structuring elements for morphological opening followed by closing (erosion, two dilations, and another erosion).
+Above is the gradient image generated from the grayscale, using the 185 pixel disc structuring elements for morphological opening followed by closing (erosion, two dilations, and another erosion).
 
 ![Output image](Examples/output.png)
 
-This is one of the main outputs, and is a raster image of the same size as the input image.  While interesting, it shows a lot of pixelation.
+Above is one of the main outputs, and is a raster image of the same size as the input image.  While interesting, it shows a lot of pixelation.
 
 ![SVG image](Examples/SuperPixels.svg)
 
-This is a line-art SVG version of the earlier output, which may be more useful for further work, as it is resolution independent.
+Above is a line-art SVG version of the earlier output, which may be more useful for further work, as it is resolution independent.
 
-![Skeleton image](Examples/outpu_skeleton.png)
+![Skeleton image](Examples/output_skeleton.png)
 
-This is an output used for diagnostics.  It breaks each shape down to a one pixel wide skeleton.
+Above is an output used for diagnostics.  It breaks each shape down to a one pixel wide skeleton.
 
 ![Painted image](Examples/output_paint.png)
 
-This is another raster output image, which shows the paint style effect.  This version has been downsized, because the original was a bit large.
+Above is another raster output image, which shows the paint style effect.  This version has been downsized, because the original was a bit large.
 
 
 
