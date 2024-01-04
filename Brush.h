@@ -59,7 +59,7 @@ public:
 	bool PaintTo2(FloatPointPair loc2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float rad1 = -1, float rad2 = -1, bool begin=false);
 	bool ChangeColor(Color c, Color sec);
 	bool PaintCorner(Corner corner, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, bool variable_radius = false);
-	bool PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, bool variable_radius = false);
+	bool PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0);
 	bool SetOrientation(FloatPointPair o);
 	bool SetOrientation(float o);
 	float GetOrientation();

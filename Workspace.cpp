@@ -1864,7 +1864,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				std::vector<Corner> curve = curve_path->GetCurve();
 				ave_radius = local_pixdata->CalculateRadius(curve.begin(), curve.end(), current->GetIdentifier());
 				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop);
-				img->PaintCurve(curve, local_pixdata, current->GetIdentifier(), true);
+				img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
 				if (prop.mix_paints)
 				{
 					second = current->GetAveColor();
@@ -1891,11 +1891,12 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				{
 					std::vector<Corner> curve = curve_path->GetCurve();
 					Paint_Properties outline_prop = prop;
-					outline_prop.flow = 10.0;
-					outline_prop.bristles = 10.0;
+					outline_prop.flow = 15.0;
+					outline_prop.bristles = 20.0;
 					outline_prop.flow_variation = 0;
-					img->CreateBrush({ 100.0, 100.0 }, black, black, 3, prop);
-					img->PaintCurve(curve, NULL, 0, false);
+					outline_prop.radius_variation = false;
+					img->CreateBrush({ 100.0, 100.0 }, black, black, 3, outline_prop);
+					img->PaintCurve(curve, NULL, 0);
 					curve_path = curve_path->GetNext();
 				}
 				current = current->GetNext();

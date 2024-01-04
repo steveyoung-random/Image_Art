@@ -103,7 +103,7 @@ bool ImageData::CreateBrush(FloatPointPair start, Color c, Color sec, int r, Pai
 	return true;
 }
 
-bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask_value, bool var_rad)
+bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask_value)
 {
 	if (NULL == data_wide)
 	{
@@ -116,7 +116,7 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 		local_corner = *it;
 		if (local_corner.smooth)
 		{
-			brush->PaintCorner2(local_corner, data_wide, width, height, mask, mask_value, var_rad);
+			brush->PaintCorner2(local_corner, data_wide, width, height, mask, mask_value);
 		}
 		else {
 			FloatPointPair dir;
@@ -137,15 +137,8 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 			dir.x = cos(o);
 			dir.y = sin(o);
 			brush->MoveTo(local_corner.p0);
-			if (var_rad)
-			{
-				brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, local_corner.radius_p0, local_corner.radius_c0, true);
-				brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, local_corner.radius_c0, local_corner.radius_p1, false);
-			}
-			else {
-				brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, -1, -1, true);
-				brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, -1, -1, false);
-			}
+			brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, local_corner.radius_p0, local_corner.radius_c0, true);
+			brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, local_corner.radius_c0, local_corner.radius_p1, false);
 		}
 	}
 	return true;

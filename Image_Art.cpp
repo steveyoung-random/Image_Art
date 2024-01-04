@@ -31,7 +31,7 @@
 #define EARLY_PALETTE false;
 #define SEEDS_OUT false;
 #define CLOSE_FIRST false;
-#define TEST_FILE "D:\\VS Projects\\Image_Art_Extra\\SNC00015.jpg"
+#define TEST_FILE "SNC00015.jpg"
 
 
 int main(int argc, char** argv)
@@ -224,6 +224,16 @@ int main(int argc, char** argv)
 					prop.mix_paints = false;
 				}
 			}
+			else if ((tag == "radius_variation") || (tag == "rv"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					prop.radius_variation = true;
+				}
+				else {
+					prop.radius_variation = false;
+				}
+				}
 			else if ((tag == "glitch1"))
 			{
 				if (atoi(value.c_str()) > 0)
@@ -467,7 +477,7 @@ int main(int argc, char** argv)
 			std::cout << "black ";
 		}
 		std::cout << "Glitch1: ";
-		if (0 == prop.glitch1)
+		if (false == prop.glitch1)
 		{
 			std::cout << "false";
 		}
@@ -475,7 +485,7 @@ int main(int argc, char** argv)
 			std::cout << "true";
 		}
 		std::cout << " Glitch2: ";
-		if (0 == prop.glitch2)
+		if (false == prop.glitch2)
 		{
 			std::cout << "false";
 		}
@@ -483,14 +493,14 @@ int main(int argc, char** argv)
 			std::cout << "true";
 		}
 		std::cout << " Glitch3: ";
-		if (0 == prop.glitch3)
+		if (false == prop.glitch3)
 		{
 			std::cout << "false\n";
 		}
 		else {
 			std::cout << "true\n";
 		}
-
+		std::cout << "Radius variation: " << prop.radius_variation << "\n";
 		std::cout << "Seeds out: " << seeds_out << " Seeds in: " << seeds_in << "\n";
 
 		if ("" != inpath)
@@ -779,21 +789,21 @@ int main(int argc, char** argv)
 			temppath.append(OUTPUT).append("_edge");
 			gradient_image->write_file(temppath);
 			delete gradient_image;
-			gradient_image = workspace->Gradient2Image(1);
-			temppath = path;
-			temppath.append(OUTPUT).append("_erode");
-			gradient_image->write_file(temppath);
-			delete gradient_image;
-			gradient_image = workspace->Gradient2Image(2);
-			temppath = path;
-			temppath.append(OUTPUT).append("_dilate");
-			gradient_image->write_file(temppath);
-			delete gradient_image;
-			gradient_image = workspace->Gradient2Image(3);
-			temppath = path;
-			temppath.append(OUTPUT).append("_processed_gray");
-			gradient_image->write_file(temppath);
-			delete gradient_image;
+			//gradient_image = workspace->Gradient2Image(1);
+			//temppath = path;
+			//temppath.append(OUTPUT).append("_erode");
+			//gradient_image->write_file(temppath);
+			//delete gradient_image;
+			//gradient_image = workspace->Gradient2Image(2);
+			//temppath = path;
+			//temppath.append(OUTPUT).append("_dilate");
+			//gradient_image->write_file(temppath);
+			//delete gradient_image;
+			//gradient_image = workspace->Gradient2Image(3);
+			//temppath = path;
+			//temppath.append(OUTPUT).append("_processed_gray");
+			//gradient_image->write_file(temppath);
+			//delete gradient_image;
 
 			if ("" != seeds_in)
 			{

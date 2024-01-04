@@ -248,6 +248,11 @@ bool Brush::PaintTo(FloatPointPair loc, float* data, int width, int height, SPix
 	}
 	float flow_adjustment = 1.0 / curve_adjustment;
 
+	if (false == paint_prop.radius_variation)
+	{
+		rad1 = -1;
+		rad2 = -1;
+	}
 	if (rad1 < 0)
 	{
 		if (rad2 < 0)
@@ -343,6 +348,11 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	float orient2;
 	float delta_orientation;
 
+	if (false == paint_prop.radius_variation)
+	{
+		r1 = -1;
+		r2 = -1;
+	}
 	if (abs(o2.x) > EFFECTIVE_ZERO)
 	{
 		orient2 = atan2(o2.y, o2.x);
@@ -755,8 +765,13 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 
 	float c_value = cos(orientation);
 	float s_value = sin(orientation);
-	int mask_width = mask->GetWidth();
-	int mask_height = mask->GetHeight();
+	int mask_width = 0;
+	int mask_height = 0;
+	if (NULL != mask)
+	{
+		mask_width = mask->GetWidth();
+		mask_height = mask->GetHeight();
+	}
 
 	int count = 0;
 	for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
@@ -940,7 +955,7 @@ bool Brush::PaintCorner(Corner corner, float* data, int width, int height, SPixe
 	return true;
 }
 
-bool Brush::PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool variable_radius)
+bool Brush::PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value)
 {
 	float chord_length = sqrt((corner.p0.x - corner.p1.x) * (corner.p0.x - corner.p1.x) + (corner.p0.y - corner.p1.y) * (corner.p0.y - corner.p1.y));
 	float leg1 = sqrt((corner.p0.x - corner.c0.x) * (corner.p0.x - corner.c0.x) + (corner.p0.y - corner.c0.y) * (corner.p0.y - corner.c0.y));
@@ -954,7 +969,7 @@ bool Brush::PaintCorner2(Corner corner, float* data, int width, int height, SPix
 	//float flow_adjustment = 1.0 / paint_scale;
 
 	int n = (int)length_est + 1;
-	if (variable_radius)
+	if (paint_prop.radius_variation)
 	{
 		local_radius = corner.radius_p0;
 		dr = (corner.radius_p1 - corner.radius_p0) / (float)n;

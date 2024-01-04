@@ -25,7 +25,7 @@ public:
 	Color GetPixel(int x, int y);
 	bool CollapseWideData();
 	bool CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop);
-	bool PaintCurve(std::vector<Corner> curve, SPixelData* mask = NULL, int mask_value = 0, bool var_rad = true);
+	bool PaintCurve(std::vector<Corner> curve, SPixelData* mask = NULL, int mask_value = 0);
 	int GetWidth();
 	int GetHeight();
 	int GetColorChannels();

@@ -23,6 +23,7 @@
 #define BRUSH_WIDTH_OVERRIDE false;
 #define BRUSH_WIDTH 30;
 #define MIX_PAINTS true;
+#define RADIUS_VARIATION true;
 
 struct RectQuad {
 	int x0, y0, x1, y1;
@@ -79,4 +80,5 @@ struct Paint_Properties
 	bool brush_width_override = BRUSH_WIDTH_OVERRIDE;
 	float brush_width = BRUSH_WIDTH;
 	bool mix_paints = MIX_PAINTS;
+	bool radius_variation = RADIUS_VARIATION;
 };
