@@ -68,7 +68,6 @@ struct Paint_Properties
 	bool glitch2 = GLITCH2;
 	bool glitch3 = GLITCH3;
 	float paint_scale = PAINT_SCALE;
-	bool scale_flow = SCALE_FLOW;
 	float bristles = BRISTLES;
 	float flow = FLOW;
 	float flow_variation = FLOW_VARIATION;

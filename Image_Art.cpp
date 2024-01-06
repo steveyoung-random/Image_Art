@@ -119,70 +119,18 @@ int main(int argc, char** argv)
 					value = input;
 				}
 			}
-			//			std::cout << "tag = " << tag << ", value = " << value << "\n";
-			if ((tag == "f") || (tag == "filename"))
-			{
-				filename = value;
-			}
-			else if ((tag == "x") || (tag == "xdiv"))
-			{
-				xdiv = atoi(value.c_str());
-			}
-			else if ((tag == "y") || (tag == "ydiv"))
-			{
-				ydiv = atoi(value.c_str());
-			}
-			else if ((tag == "refine") || (tag == "r") || (tag == "repeat"))
-			{
-				repeat = atoi(value.c_str());
-			}
-			else if ((tag == "pre_window") || (tag == "w") || (tag == "windowsize"))
-			{
-				preproc_windowsize = atoi(value.c_str());
-			}
-			else if ((tag == "post_window") || (tag == "p"))
-			{
-				postproc_windowsize = atoi(value.c_str());
-			}
-			else if ((tag == "gap") || (tag == "g"))
-			{
-				postgap = atof(value.c_str());
-			}
-			else if ((tag == "snap") || (tag == "k"))
-			{
-				k = atof(value.c_str());
-			}
-			else if ((tag == "paint_scale") || (tag == "scale"))
-			{
-				prop.paint_scale = atof(value.c_str());
-			}
-			else if (tag == "colormatch")
-			{
-				colorsimilarity = atoi(value.c_str());
-			}
-			else if ((tag == "erode") || (tag == "preerode") || (tag == "pre_erode") || (tag == "pre-erode"))
-			{
-				pre_erode_shape = atoi(value.c_str());
-			}
-			else if ((tag == "dilate") || (tag == "predilate") || (tag == "pre_dilate") || (tag == "pre-dilate"))
-			{
-				pre_dilate_shape = atoi(value.c_str());
-			}
-			else if ((tag == "posterode") || (tag == "post_erode") || (tag == "post-erode"))
-			{
-				post_erode_shape = atoi(value.c_str());
-			}
-			else if ((tag == "postdilate") || (tag == "post_dilate") || (tag == "post-dilate"))
-			{
-				post_dilate_shape = atoi(value.c_str());
-			}
-			else if ((tag == "palette") || (tag == "pal"))
-			{
-				palette = atoi(value.c_str());
-			}
-			else if ((tag == "background") || (tag == "b"))
+
+			if ((tag == "b") || (tag == "background"))
 			{
 				prop.background = atoi(value.c_str());
+			}
+			else if ((tag == "bristles") || (tag == "num_bristles"))
+			{
+				prop.bristles = atoi(value.c_str());
+			}
+			else if ((tag == "c") || (tag == "channel"))
+			{
+				channel = atoi(value.c_str());
 			}
 			else if ((tag == "close_first") || (tag == "reverse"))
 			{
@@ -194,17 +142,29 @@ int main(int argc, char** argv)
 					close_first = false;
 				}
 			}
-			else if ((tag == "subpixel") || (tag == "sp"))
+			else if (tag == "colormatch")
+			{
+				colorsimilarity = atoi(value.c_str());
+			}
+			else if ((tag == "d") || (tag == "diagonals") || (tag == "diagonal"))
 			{
 				if (atoi(value.c_str()) > 0)
 				{
-					prop.sub_pixel = true;
+					diagonals = true;
 				}
 				else {
-					prop.sub_pixel = false;
+					diagonals = false;
 				}
 			}
-			else if ((tag == "early_palette") || (tag == "ep"))
+			else if ((tag == "dilate") || (tag == "predilate") || (tag == "pre_dilate") || (tag == "pre-dilate"))
+			{
+				pre_dilate_shape = atoi(value.c_str());
+			}
+			else if (tag == "edgefile")
+			{
+				edgefile = value.c_str();
+			}
+			else if ((tag == "ep") || (tag == "early_palette"))
 			{
 				if (atoi(value.c_str()) > 0)
 				{
@@ -214,26 +174,61 @@ int main(int argc, char** argv)
 					early_palette = false;
 				}
 			}
-			else if ((tag == "mix") || (tag == "mix_paints"))
+			else if ((tag == "erode") || (tag == "preerode") || (tag == "pre_erode") || (tag == "pre-erode"))
+			{
+				pre_erode_shape = atoi(value.c_str());
+			}
+			else if ((tag == "f") || (tag == "filename"))
+			{
+				filename = value;
+			}
+			else if (tag == "fine")
 			{
 				if (atoi(value.c_str()) > 0)
 				{
-					prop.mix_paints = true;
+					fine = true;
 				}
 				else {
-					prop.mix_paints = false;
+					fine = false;
 				}
 			}
-			else if ((tag == "radius_variation") || (tag == "rv"))
+			else if (tag == "flow")
 			{
-				if (atoi(value.c_str()) > 0)
+				prop.flow = atof(value.c_str());
+			}
+			else if ((tag == "fv") || (tag == "flow_variation"))
+			{
+				prop.flow_variation = atof(value.c_str());
+			}
+			else if ((tag == "g") || (tag == "gap"))
+			{
+				postgap = atof(value.c_str());
+			}
+			else if (tag == "glitch")
+			{
+				unsigned char c = atoi(value.c_str());
+				if (1 == (c & 1))
 				{
-					prop.radius_variation = true;
+					prop.glitch1 = true;
 				}
 				else {
-					prop.radius_variation = false;
+					prop.glitch1 = false;
 				}
+				if (2 == (c & 2))
+				{
+					prop.glitch2 = true;
 				}
+				else {
+					prop.glitch2 = false;
+				}
+				if (4 == (c & 4))
+				{
+					prop.glitch3 = true;
+				}
+				else {
+					prop.glitch3 = false;
+				}
+			}
 			else if ((tag == "glitch1"))
 			{
 				if (atoi(value.c_str()) > 0)
@@ -264,29 +259,110 @@ int main(int argc, char** argv)
 					prop.glitch3 = false;
 				}
 			}
-			else if (tag == "glitch")
+			else if ((tag == "grad") || (tag == "gradthickness") || (tag == "grad_thickness"))
 			{
-				unsigned char c = atoi(value.c_str());
-				if (1 == (c & 1))
+				gradthickness = atoi(value.c_str());
+			}
+			else if (tag == "grayfile")
+			{
+				grayfile = value.c_str();
+			}
+			else if (tag == "inpath")
+			{
+				inpath = value.c_str();
+				if (inpath.substr(inpath.length() - 1, 1) != "\\")
 				{
-					prop.glitch1 = true;
+					inpath.append("\\");
+				}
+			}
+			else if ((tag == "k") || (tag == "snap"))
+			{
+				k = atof(value.c_str());
+			}
+			else if ((tag == "mix") || (tag == "mix_paints"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					prop.mix_paints = true;
 				}
 				else {
-					prop.glitch1 = false;
+					prop.mix_paints = false;
 				}
-				if (2 == (c & 2))
+			}
+			else if ((tag == "nc") || (tag == "negchannel") || (tag == "nchannel"))
+			{
+				nchannel = atoi(value.c_str());
+			}
+			else if ((tag == "o") || (tag == "outlines") || (tag == "outline"))
+			{
+				if (atoi(value.c_str()) > 0)
 				{
-					prop.glitch2 = true;
+					prop.outline = true;
 				}
 				else {
-					prop.glitch2 = false;
+					prop.outline = false;
 				}
-				if (4 == (c & 4))
+			}
+			else if ((tag == "p") || (tag == "post_window"))
+			{
+				postproc_windowsize = atoi(value.c_str());
+			}
+			else if ((tag == "pal") || (tag == "palette"))
+			{
+				palette = atoi(value.c_str());
+			}
+			else if (tag == "path")
+			{
+				path = value.c_str();
+				if (path.substr(path.length() - 1, 1) != "\\")
 				{
-					prop.glitch3 = true;
+					path.append("\\");
+				}
+			}
+			else if ((tag == "poly") || (tag == "polygon"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					polygon = true;
 				}
 				else {
-					prop.glitch3 = false;
+					polygon = false;
+				}
+			}
+			else if ((tag == "postdilate") || (tag == "post_dilate") || (tag == "post-dilate"))
+			{
+				post_dilate_shape = atoi(value.c_str());
+			}
+			else if ((tag == "posterode") || (tag == "post_erode") || (tag == "post-erode"))
+			{
+				post_erode_shape = atoi(value.c_str());
+			}
+			else if ((tag == "r") || (tag == "refine") || (tag == "repeat"))
+			{
+				repeat = atoi(value.c_str());
+			}
+			else if ((tag == "rv") || (tag == "radius_variation"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					prop.radius_variation = true;
+				}
+				else {
+					prop.radius_variation = false;
+				}
+			}
+			else if ((tag == "scale") || (tag == "paint_scale"))
+			{
+				prop.paint_scale = atof(value.c_str());
+			}
+			else if ((tag == "show_edges") || (tag == "edges"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					show_edges = true;
+				}
+				else {
+					show_edges = false;
 				}
 			}
 			else if ((tag == "show_grays") || (tag == "grays"))
@@ -299,37 +375,11 @@ int main(int argc, char** argv)
 					show_grays = false;
 				}
 			}
-			else if ((tag == "show_edges") || (tag == "edges"))
+			else if ((tag == "si") || (tag == "seeds_in"))
 			{
-				if (atoi(value.c_str()) > 0)
-				{
-					show_edges = true;
-				}
-				else {
-					show_edges = false;
-				}
+				seeds_in = value.c_str();
 			}
-			else if ((tag == "fine") || (tag == "f"))
-			{
-				if (atoi(value.c_str()) > 0)
-				{
-					fine = true;
-				}
-				else {
-					fine = false;
-				}
-			}
-			else if ((tag == "polygon") || (tag == "poly"))
-			{
-				if (atoi(value.c_str()) > 0)
-				{
-					polygon = true;
-				}
-				else {
-					polygon = false;
-				}
-			}
-			else if ((tag == "seeds_out") || (tag == "so"))
+			else if ((tag == "so") || (tag == "seeds_out"))
 			{
 				if (atoi(value.c_str()) > 0)
 				{
@@ -339,95 +389,35 @@ int main(int argc, char** argv)
 					seeds_out = false;
 				}
 			}
-			else if ((tag == "bristles") || (tag == "num_bristles"))
+			else if ((tag == "sp") || (tag == "subpixel") || (tag == "sub_pixel"))
 			{
-				prop.bristles = atoi(value.c_str());
-			}
-			else if (tag == "flow")
-			{
-				prop.flow = atof(value.c_str());
-			}
-			else if ((tag == "thin") || (tag == "bristle_thin") || (tag == "thinness"))
-			{
-				prop.bristle_thin_factor = atof(value.c_str());
-			}
-			else if ((tag == "flow_variation") || (tag == "fv"))
-			{
-				prop.flow_variation = atof(value.c_str());
-			}
-			else if ((tag == "channel") || (tag == "c"))
-			{
-				channel = atoi(value.c_str());
-			}
-			else if ((tag == "negchannel") || (tag == "nchannel") || (tag == "nc"))
-			{
-				nchannel = atoi(value.c_str());
-			}
-			else if ((tag == "grad") || (tag == "gradthickness") || (tag == "grad_thickness"))
-			{
-				gradthickness = atoi(value.c_str());
-			}
-			else if (tag == "path")
-			{
-				path = value.c_str();
-				if (path.substr(path.length() - 1, 1) != "\\")
+				if (atoi(value.c_str()) > 0)
 				{
-					path.append("\\");
+					prop.sub_pixel = true;
 				}
-			}
-			else if ((tag == "seeds_in") || (tag == "si"))
-			{
-				seeds_in = value.c_str();
-			}
-			else if (tag == "inpath")
-			{
-				inpath = value.c_str();
-				if (inpath.substr(inpath.length() - 1, 1) != "\\")
-				{
-					inpath.append("\\");
+				else {
+					prop.sub_pixel = false;
 				}
 			}
 			else if (tag == "spfile")
 			{
 				spfile = value.c_str();
 			}
-			else if (tag == "grayfile")
+			else if ((tag == "thin") || (tag == "bristle_thin") || (tag == "thinness"))
 			{
-				grayfile = value.c_str();
+				prop.bristle_thin_factor = atof(value.c_str());
 			}
-			else if (tag == "edgefile")
+			else if ((tag == "w") || (tag == "pre_window") || (tag == "windowsize"))
 			{
-				edgefile = value.c_str();
+				preproc_windowsize = atoi(value.c_str());
 			}
-			else if ((tag == "outlines") || (tag == "outline") || (tag == "o"))
+			else if ((tag == "x") || (tag == "xdiv"))
 			{
-				if (atoi(value.c_str()) > 0)
-				{
-					prop.outline = true;
-				}
-				else {
-					prop.outline = false;
-				}
+				xdiv = atoi(value.c_str());
 			}
-			else if ((tag == "diagonals") || (tag == "diagonal") || (tag == "d"))
+			else if ((tag == "y") || (tag == "ydiv"))
 			{
-				if (atoi(value.c_str()) > 0)
-				{
-					diagonals = true;
-				}
-				else {
-					diagonals = false;
-				}
-			}
-			else if ((tag == "scale_flow") || (tag == "sf"))
-			{
-				if (atoi(value.c_str()) > 0)
-				{
-					prop.scale_flow = true;
-				}
-				else {
-					prop.scale_flow = false;
-				}
+				ydiv = atoi(value.c_str());
 			}
 			else {
 				std::cout << "Failed to match tag value: " << tag << ", ignoring.\n";
@@ -465,7 +455,7 @@ int main(int argc, char** argv)
 		std::cout << "Path: " << path << " Inpath: " << inpath << "\n";
 		std::cout << "Fine points for SVG: " << fine << " Polygons for SVG: " << polygon << "\n";
 		std::cout << "Palette size: " << palette << " Early palette reduction: " << early_palette << " Mix paints: " << prop.mix_paints << "\n";
-		std::cout << "Paint scale: " << prop.paint_scale << " Scale flow to paint scale: " << prop.scale_flow << "\n";
+		std::cout << "Paint scale: " << prop.paint_scale << "\n";
 		std::cout << "Bristle coefficient: " << prop.bristles << " Sub-pixel: " << prop.sub_pixel << " Bristle thinness factor: " << prop.bristle_thin_factor << "\n";
 		std::cout << "Flow: " << prop.flow << " Flow variation: " << prop.flow_variation << "\n";
 		std::cout << "Background color: ";
@@ -542,6 +532,7 @@ int main(int argc, char** argv)
 			{
 				throw (std::runtime_error("Failed to create ImageData object.\n"));
 			}
+			std::cout << "show_grays mode.\n";
 			gray = image->gen_gray(0, 0);
 			ImageData* gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -549,7 +540,7 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".";
 			gray = image->gen_gray(1, 0);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -557,7 +548,7 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".";
 			gray = image->gen_gray(2, 0);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -565,7 +556,7 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".";
 			gray = image->gen_gray(3, 0);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -573,7 +564,7 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".";
 			gray = image->gen_gray(1, 2);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -581,7 +572,7 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".";
 			gray = image->gen_gray(1, 3);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -589,7 +580,7 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".";
 			gray = image->gen_gray(2, 3);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
@@ -597,8 +588,9 @@ int main(int argc, char** argv)
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
-
+			std::cout << ".\n";
 			delete image;
+			std::cout << "Done.\n";
 		}
 		else if (show_edges)
 		{
@@ -623,13 +615,14 @@ int main(int argc, char** argv)
 			{
 				throw (std::runtime_error("Failed to create ImageData object.\n"));
 			}
+			std::cout << "show_edges mode.\n";
 			gray = image->gen_gray(channel, nchannel);
 			ImageData* gray_image = gray->Gradient2Image(1);
 			temppath = path;
 			temppath.append(OUTPUT).append("_gray");
 			gray_image->write_file(temppath);
 			delete gray_image;
-
+			std::cout << ".";
 			int steps;
 			int modes = 0;
 
@@ -665,18 +658,22 @@ int main(int argc, char** argv)
 				delete gray_image;
 				delete edge;
 				delete preprocessed_gray;
+				std::cout << ".";
 			}
 
 			delete gray;
 			delete image;
+			std::cout << "\nDone.\n";
 		}
 		else if ("" != spfile)
 		{
+			std::cout << "Reading SuperPixel input from file.\n";
 			workspace = new WorkSpace(filename, spfile, grayfile, edgefile, diagonals);
 			if (NULL == workspace)
 			{
 				throw std::runtime_error("Failed to create Workspace.\n");
 			}
+			std::cout << ".";
 			if (early_palette)
 			{
 				if (false == workspace->ReduceToPalette(0, palette))
@@ -685,17 +682,20 @@ int main(int argc, char** argv)
 				}
 				palette = 0; // Avoid re-creating palette later.
 			}
+			std::cout << ".";
 			workspace->FindPaths(0, polygon, fine);
+			std::cout << ".";
 			temppath = path;
 			temppath.append("SuperPixels.svg");
 			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette);
+			std::cout << ".";
 			if (false == workspace->SetAveColors())
 			{
 				throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
 			}
 			for (int ri = 0; ri < 3; ri++)
 			{
-				std::cout << "Starting Absorb run " << (ri + 1) << "\n";
+				std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
 				if (false == workspace->CombineSuperPixels(colorsimilarity))
 				{
 					throw std::runtime_error("Error combining SuperPixels.\n");
@@ -708,61 +708,75 @@ int main(int argc, char** argv)
 			}
 			if (postproc_windowsize > 0)
 			{
+				std::cout << "\nStart postprocessing ";
 				workspace->Postprocess_SuperPixels(1, 1, post_erode_shape, postproc_windowsize);
+				std::cout << ".";
 				workspace->Postprocess_SuperPixels(1, 0, post_dilate_shape, (postproc_windowsize - postgap));
+				std::cout << ".";
 				workspace->FindPaths(1, polygon, fine);
+				std::cout << ".";
 			}
+			std::cout << "\nWriting output files ";
 			workspace->FindPaths(0, polygon, fine);
+			std::cout << ".";
 			temppath = path;
 			temppath.append("SuperPixels_b.svg");
 			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette);
+			std::cout << ".";
 			ImageData* data_revised = workspace->GenerateImage(0, prop);
 			temppath = path;
 			temppath.append(OUTPUT);
 			data_revised->write_file(temppath);
+			std::cout << ".";
 			delete data_revised;
 			workspace->ThinSuperPixels(prop.glitch3);
 			data_revised = workspace->GenerateImage(2, prop);
 			temppath = path;
 			temppath.append(OUTPUT).append("_skeleton");
 			data_revised->write_file(temppath);
+			std::cout << ".";
 			delete data_revised;
-
 			data_revised = workspace->GenerateImage(3, prop);
-
 			temppath = path;
 			temppath.append(OUTPUT).append("_paint");
 			data_revised->write_file(temppath);
+			std::cout << ".";
 			delete data_revised;
 			temppath = path;
 			temppath.append("SuperPixels_Paint_Paths.svg");
 			workspace->WritePaintCurvesSVG(temppath);
-
+			std::cout << ".";
 			if (postproc_windowsize > 0)
 			{
 				//workspace->FindPaths(1, polygon, fine);
 				temppath = path;
 				temppath.append("SuperPixels_Post.svg");
 				workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette);
+				std::cout << ".";
 				data_revised = workspace->GenerateImage(1, prop);
 				temppath = path;
 				temppath.append(OUTPUT).append("_post");
 				data_revised->write_file(temppath);
+				std::cout << ".";
 				delete data_revised;
 			}
+			std::cout << "\nDone.\n";
 		}
 		else {
+			std::cout << "Starting from original image.";
+			std::cout << "\nGenerating grayscale and gradient\n";
 			workspace = new WorkSpace(filename, channel, nchannel, diagonals);
 			if (NULL == workspace)
 			{
 				throw std::runtime_error("Failed to create Workspace.\n");
 			}
+			std::cout << ".";
 			ImageData* gray_image = workspace->Gradient2Image(4);
 			temppath = path;
 			temppath.append(OUTPUT).append("_gray");
 			gray_image->write_file(temppath);
 			delete gray_image;
-
+			std::cout << ".";
 			int steps;
 			int modes = 0;
 
@@ -783,12 +797,15 @@ int main(int argc, char** argv)
 			}
 
 			workspace->Preprocess_Gray(4, steps, modes, preproc_windowsize);
+			std::cout << ".";
 			workspace->Generate_Gradient(1, gradthickness, xdiv, ydiv, k);
+			std::cout << ".";
 			ImageData* gradient_image = workspace->Gradient2Image(0);
 			temppath = path;
 			temppath.append(OUTPUT).append("_edge");
 			gradient_image->write_file(temppath);
 			delete gradient_image;
+			std::cout << ".";
 			//gradient_image = workspace->Gradient2Image(1);
 			//temppath = path;
 			//temppath.append(OUTPUT).append("_erode");
@@ -814,7 +831,6 @@ int main(int argc, char** argv)
 			else {
 				workspace->InitialSuperPixels();
 			}
-
 			if (early_palette)
 			{
 				if (false == workspace->ReduceToPalette(0, palette))
@@ -822,6 +838,7 @@ int main(int argc, char** argv)
 					throw std::runtime_error("Error reducing color palette.\n");
 				}
 				palette = 0; // Avoid re-creating palette.
+				std::cout << ".";
 			}
 
 			if (seeds_out)
@@ -829,22 +846,21 @@ int main(int argc, char** argv)
 				temppath = path;
 				temppath.append("seeds.txt");
 				workspace->WriteSeeds(temppath);
+				std::cout << ".";
 			}
 
 			while (repeat > 0)
 			{
+				std::cout << "\nBeginning watershed calculation.  Repeat count: " << repeat;
 				repeat--;
-
 				if (false == workspace->Watershed())
 				{
 					throw std::runtime_error("Error calling Watershed function.\n");
 				}
-
 				if (false == workspace->SetAveColors())
 				{
 					throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
 				}
-
 
 				if (0 == repeat)
 				{
@@ -853,15 +869,15 @@ int main(int argc, char** argv)
 						temppath = path;
 						temppath.append("SuperPixels.dat");
 						workspace->WriteSuperPixels(temppath);
+						std::cout << ".";
 					}
 					for (int ri = 0; ri < 3; ri++)
 					{
-						std::cout << "Starting Absorb run " << (ri + 1) << "\n";
+						std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
 						if (false == workspace->CombineSuperPixels(colorsimilarity))
 						{
 							throw std::runtime_error("Error combining SuperPixels.\n");
 						}
-
 						if (false == workspace->SetAveColors())
 						{
 							throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
@@ -869,28 +885,33 @@ int main(int argc, char** argv)
 					}
 					if (postproc_windowsize > 0)
 					{
+						std::cout << "\nStart postprocessing ";
 						workspace->Postprocess_SuperPixels(1, 1, post_erode_shape, postproc_windowsize);
+						std::cout << ".";
 						workspace->Postprocess_SuperPixels(1, 0, post_dilate_shape, (postproc_windowsize - postgap));
+						std::cout << ".";
 						workspace->FindPaths(1, polygon, fine);
+						std::cout << ".";
 					}
 				}
 
 
 				// Paint each pixel in each SuperPixel to the average color.
-
 				ImageData* data_revised = workspace->GenerateImage(0, prop);
 				temppath = path;
 				temppath.append(OUTPUT);
 				data_revised->write_file(temppath);
 				delete data_revised;
-
+				std::cout << ".";
 				if (0 == repeat)
 				{
+					std::cout << "\nWriting output files ";
 					if (seeds_out)
 					{
 						temppath = path;
 						temppath.append("seeds.txt");
 						workspace->WriteSeeds(temppath);
+						std::cout << ".";
 					}
 					workspace->ThinSuperPixels(prop.glitch3);
 					data_revised = workspace->GenerateImage(2, prop);
@@ -898,32 +919,36 @@ int main(int argc, char** argv)
 					temppath.append(OUTPUT).append("_skeleton");
 					data_revised->write_file(temppath);
 					delete data_revised;
-
+					std::cout << ".";
 					data_revised = workspace->GenerateImage(3, prop);
-
 					temppath = path;
 					temppath.append(OUTPUT).append("_paint");
 					data_revised->write_file(temppath);
 					delete data_revised;
+					std::cout << ".";
 					temppath = path;
 					temppath.append("SuperPixels_Paint_Paths.svg");
 					workspace->WritePaintCurvesSVG(temppath);
-
+					std::cout << ".";
 					if (postproc_windowsize > 0)
 					{
 						temppath = path;
 						temppath.append("SuperPixels_Post.svg");
 						workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette);
+						std::cout << ".";
 						data_revised = workspace->GenerateImage(1, prop);
 						temppath = path;
 						temppath.append(OUTPUT).append("_post");
 						data_revised->write_file(temppath);
+						std::cout << ".";
 						delete data_revised;
 					}
 					workspace->FindPaths(0, polygon, fine);
+					std::cout << ".";
 					temppath = path;
 					temppath.append("SuperPixels.svg");
 					workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette);
+					std::cout << ".";
 				}
 
 				if (repeat > 0)
@@ -935,6 +960,7 @@ int main(int argc, char** argv)
 				}
 
 			}
+			std::cout << "\nDone.\n";
 		}
 	}
 

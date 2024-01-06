@@ -769,6 +769,7 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 		ifile.close();
 	}
 	else {
+		std::cout << "\nFinding initial seeds ";
 		for (int j = ydiv / 2; j < height; j = j + ydiv)
 		{
 			for (int i = xdiv / 2; i < width; i = i + xdiv)
@@ -778,7 +779,7 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 				if (cell->FindSeed(NULL, 0, diagonals))
 				{
 					PointPair seed = cell->GetSeed();
-					std::cout << "Seed: " << seed.x << ", " << seed.y << "\n";
+					std::cout << ".";
 					delete cell;
 					if (NULL == list_head)
 					{
@@ -809,12 +810,12 @@ bool WorkSpace::Watershed()
 		current->Reset();
 		current = current->GetNext();
 	}
-
+	std::cout << "\n256 Levels: ";
 	// Implement actual waterpixel algorithm.
 	for (int level = 0; level < 256; level++)
 	{
 		bool done = false;
-		std::cout << "Starting level: " << level << "\n";
+		std::cout << ".";
 		while (false == done)
 		{
 			done = true;
@@ -847,24 +848,27 @@ bool WorkSpace::SetAveColors()
 
 	// Set seed color of each SuperPixel to average color.
 	current = list_head;
+	std::cout << "\nCalculate colors ";
 	while (NULL != current)
 	{
 		Color ave;
 		ave = current->SetAveColor(image);
 		PointPair seed = current->GetSeed();
 
-		std::cout << current->GetIdentifier() << ", " << seed.x << ", " << seed.y << ", " << current->GetSize() << ", " << current->GetAveError() << "\n";
-		if (current->SetNeighbors())
-		{
-			std::set<int>* neighbors;
-			neighbors = current->GetNeighbors();
-			std::set<int>::iterator it;
-			for (it = neighbors->begin(); it != neighbors->end(); ++it)
-			{
-				std::cout << *it << " ";
-			}
-			std::cout << "\n";
-		}
+//		std::cout << current->GetIdentifier() << ", " << seed.x << ", " << seed.y << ", " << current->GetSize() << ", " << current->GetAveError() << "\n";
+		std::cout << ".";
+		current->SetNeighbors();
+		//if (current->SetNeighbors())
+		//{
+		//	std::set<int>* neighbors;
+		//	neighbors = current->GetNeighbors();
+		//	std::set<int>::iterator it;
+			//for (it = neighbors->begin(); it != neighbors->end(); ++it)
+			//{
+			//	std::cout << *it << " ";
+			//}
+			//std::cout << "\n";
+		//}
 		current = current->GetNext();
 	}
 	return true;
@@ -898,6 +902,7 @@ bool WorkSpace::CombineSuperPixels(float colormatch)
 							current->Absorb(nsp, true, true);
 							list_head = current->GetHead();
 							list_tail = current->GetTail();
+							std::cout << ".";
 							break;
 						}
 					}
@@ -1323,6 +1328,7 @@ bool WorkSpace::SplitSuperPixels(float num_sigmas)
 	// Split up SuperPixels with large color errors.
 	double overall_ave_error = 0;
 	current = list_head;
+	std::cout << "\nSplit SuperPixels ";
 	while (NULL != current)
 	{
 		overall_ave_error += current->GetAveError();
@@ -1338,14 +1344,16 @@ bool WorkSpace::SplitSuperPixels(float num_sigmas)
 	}
 	sigma = sqrt(sigma / list_head->Count());
 	float limit = overall_ave_error + (num_sigmas * sigma);
-	std::cout << "Error: " << overall_ave_error << ", " << sigma << ", " << limit << "\n";
+	//std::cout << "Error: " << overall_ave_error << ", " << sigma << ", " << limit << "\n";
+	std::cout << ".";
 	current = list_head;
 	while (NULL != current)
 	{
 		if (current->GetAveError() > limit)
 		{
 			PointPair Add_Seed = current->Split(image, diagonals);
-			std::cout << current->GetIdentifier() << ", " << Add_Seed.x << ", " << Add_Seed.y << "\n";
+			//std::cout << current->GetIdentifier() << ", " << Add_Seed.x << ", " << Add_Seed.y << "\n";
+			std::cout << ".";
 			if ((Add_Seed.x != 0) || (Add_Seed.y != 0))
 			{
 				int Add_Id = 1 + current->GetTail()->GetIdentifier();
