@@ -44,10 +44,13 @@ private:
 	int color_bucket;
 	SuperPixelType type;
 	bool EdgePixelsCurrent;
+	int image_width;
+	int image_height;
 
 public:
 	SuperPixel(int id, GradData* graddat, SPixelData* pixdat, PointPair point, SuperPixel* n, SuperPixel* p, WorkSpace* ws = NULL, SuperPixelType t = SPType_Plain);
 	SuperPixel(const SuperPixel& tsp, GradData* graddat, SPixelData* pixdat, SuperPixel* n, SuperPixel* p, WorkSpace* ws = NULL, SuperPixelType t = SPType_Plain);
+	SuperPixel(int id, SPixelData* pixdat, PointPair point, SuperPixel* n, SuperPixel* p, WorkSpace* ws = NULL, SuperPixelType t = SPType_Plain);
 	~SuperPixel();
 
 	bool Absorb(SuperPixel* i, bool remove = true, bool manage_neighbors = false);

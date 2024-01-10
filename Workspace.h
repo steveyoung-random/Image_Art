@@ -78,7 +78,7 @@ private:
 public:
 
 	WorkSpace(std::string filename, int channel = 0, int nchannel = 0, bool diagonals = false);
-	WorkSpace(std::string filename, std::string sp_filename, std::string gray_filename, std::string edge_filename, bool diagonals = false);
+	WorkSpace(std::string sp_filename, bool diagonals = false);
 	~WorkSpace();
 	bool Reset();
 	bool write_file(std::string filename);

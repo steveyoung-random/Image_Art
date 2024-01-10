@@ -22,6 +22,8 @@ SuperPixel::SuperPixel(int id, GradData* graddat, SPixelData* pixdat, PointPair 
 	pixeldata = pixdat;
 	gradientdata = graddat;
 	workspace = ws;
+	image_width = graddat->GetWidth();
+	image_height = graddat->GetHeight();
 	if (NULL != prev)
 	{
 		prev->SetNext(this);
@@ -54,6 +56,8 @@ SuperPixel::SuperPixel(const SuperPixel& tsp, GradData* graddat, SPixelData* pix
 	pixeldata = pixdat;
 	gradientdata = graddat;
 	workspace = ws;
+	image_width = tsp.image_width;
+	image_height = tsp.image_height;
 	if (NULL != prev)
 	{
 		prev->SetNext(this);
@@ -68,6 +72,43 @@ SuperPixel::SuperPixel(const SuperPixel& tsp, GradData* graddat, SPixelData* pix
 	Vertices.clear();
 	AveError = 0;
 	AveColor = tsp.AveColor;
+	num_paths = 0;
+	type = t;
+	EdgePixelsCurrent = false;
+}
+
+SuperPixel::SuperPixel(int id, SPixelData* pixdat, PointPair point, SuperPixel* n, SuperPixel* p, WorkSpace* ws, SuperPixelType t)
+{
+	seed = point;
+	boundingbox.x0 = seed.x;
+	boundingbox.y0 = seed.y;
+	boundingbox.x1 = seed.x;
+	boundingbox.y1 = seed.y;
+	size = 1;
+	next = n;
+	prev = p;
+	level_complete = 0;
+	prevsize = 1;
+	identifier = id;
+	pixeldata = pixdat;
+	gradientdata = NULL;
+	workspace = ws;
+	image_width = pixdat->GetWidth();
+	image_height = pixdat->GetHeight();
+	if (NULL != prev)
+	{
+		prev->SetNext(this);
+	}
+	if (NULL != next)
+	{
+		next->SetPrev(this);
+	}
+	pixeldata->SetPixel(seed.x, seed.y, id);
+	EdgePixels.clear();
+	EdgePixels.insert(XY2Pos(seed));
+	Neighbors.clear();
+	Vertices.clear();
+	AveError = 0;
 	num_paths = 0;
 	type = t;
 	EdgePixelsCurrent = false;
@@ -131,8 +172,8 @@ int SuperPixel::Grow(unsigned char value, bool limit, bool mode, RectQuad box, S
 	{
 		box.x0 = 0;
 		box.y0 = 0;
-		box.x1 = gradientdata->GetWidth() - 1;
-		box.y1 = gradientdata->GetHeight() - 1;
+		box.x1 = pixeldata->GetWidth() - 1;
+		box.y1 = pixeldata->GetHeight() - 1;
 	}
 	if (false == EdgePixelsCurrent)
 	{
@@ -339,6 +380,17 @@ SuperPixel* SuperPixel::GetByIdentifier(int key)
 bool SuperPixel::Absorb(SuperPixel* intersecting_pixel, bool remove, bool manage_neighbors)
 {
 	// "remove" indicates whether the intersecting_pixel should be deleted after being absorbed.
+	//double channel_squared[3];
+	Color other_color = intersecting_pixel->GetAveColor();
+	int other_size = intersecting_pixel->GetSize();
+	for (int chan = 0; chan < 3; ++chan)
+	{
+		//channel_squared[chan] = size * (AveColor.channel[chan] * AveColor.channel[chan]);
+
+		//channel_squared[chan] += other_size * (other_color.channel[chan] * other_color.channel[chan]);
+
+		AveColor.channel[chan] = sqrt((size * (AveColor.channel[chan] * AveColor.channel[chan]) + other_size * (other_color.channel[chan] * other_color.channel[chan])) / (size + other_size));
+	}
 	int int_id = intersecting_pixel->GetIdentifier();
 	size += intersecting_pixel->GetSize();
 	prevsize += intersecting_pixel->GetPrevSize();
@@ -423,7 +475,7 @@ PointPair SuperPixel::GetSeed()
 bool SuperPixel::FindEdgePixels()
 {
 	bool left_surrounded = false;
-	int height = pixeldata->GetHeight();
+	int height = pixeldata->GetHeight();  // *** Should these both just be image_height and image_width?
 	int width = pixeldata->GetWidth();
 	EdgePixels.clear();
 	for (int j = boundingbox.y0; j <= boundingbox.y1; j++)
@@ -441,12 +493,12 @@ bool SuperPixel::FindEdgePixels()
 					edge = false;
 					for (int l = (j - 1); l <= (j + 1); l++)
 					{
-						if ((l >= 0) && (l < gradientdata->GetHeight()))
+						if ((l >= 0) && (l < image_height))
 						{
 							if (left_surrounded)
 							{
 								int k = i + 1; // Can skip i-1 and i, since we know the pixel to the left (i-1) is surrounded.
-								if (k < gradientdata->GetWidth())
+								if (k < image_width)
 								{
 									if (false == edge)
 									{
@@ -461,7 +513,7 @@ bool SuperPixel::FindEdgePixels()
 							else {
 								for (int k = (i - 1); k <= (i + 1); k++)// Do full examination, because the pixel to the left is not surrounded.
 								{
-									if ((k >= 0) && (k < gradientdata->GetWidth()))
+									if ((k >= 0) && (k < image_width))
 									{
 										if ((false == edge) && ((l != j) || (k != i)))
 										{
@@ -692,17 +744,15 @@ GradData* SuperPixel::GetGradient()
 PointPair SuperPixel::Pos2XY(int pos)
 {
 	PointPair ret;
-	int width = gradientdata->GetWidth();
-	ret.y = (int)(pos / width);
-	ret.x = pos - (ret.y * width);
+	ret.y = (int)(pos / image_width);
+	ret.x = pos - (ret.y * image_width);
 	return ret;
 }
 
 int SuperPixel::XY2Pos(PointPair xy)
 {
 	int ret;
-	int width = gradientdata->GetWidth();
-	ret = (xy.y * width + xy.x);
+	ret = (xy.y * image_width + xy.x);
 	return ret;
 }
 
@@ -774,7 +824,7 @@ PointPair SuperPixel::Split(ImageData* image, bool diagonals)
 		return ret;
 	}
 
-	seedpixeldata = new SPixelData(gradientdata->GetWidth(), gradientdata->GetHeight());
+	seedpixeldata = new SPixelData(image_width, image_height);
 
 	//First, set the SuperPixel with identifier '1' (through count variable) as the existing one.
 	seedpixeldata->Reset();
@@ -930,8 +980,6 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 	bool changed = false;
 	std::set<int> remove_list;
 	remove_list.clear();
-	int w = gradientdata->GetWidth();
-	int h = gradientdata->GetHeight();
 	std::set<int>::iterator it;
 	for (it = EdgePixels.begin(); it != EdgePixels.end(); ++it)
 	{
@@ -954,7 +1002,7 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			else {
 				p9 = false;
 			}
-			if (i < (w - 1))
+			if (i < (image_width - 1))
 			{
 				p3 = (identifier == pixeldata->GetPixel(i + 1, j - 1));
 				if (p3)
@@ -977,7 +1025,7 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			p3 = false;
 		}
 
-		if (j < (h - 1))  // p7, p6, p5
+		if (j < (image_height - 1))  // p7, p6, p5
 		{
 			if (i > 0)
 			{
@@ -990,7 +1038,7 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			else {
 				p7 = false;
 			}
-			if (i < (w - 1))
+			if (i < (image_width - 1))
 			{
 				p5 = (identifier == pixeldata->GetPixel(i + 1, j + 1));
 				if (p5)
@@ -1025,7 +1073,7 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			p8 = false;
 		}
 
-		if (i < (w - 1))  // p4
+		if (i < (image_width - 1))  // p4
 		{
 			p4 = (identifier == pixeldata->GetPixel(i + 1, j));
 			if (p4)
@@ -1111,11 +1159,11 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			int j = xy.y;
 			for (int wy = j - 1; wy <= (j + 1); wy++)
 			{
-				if ((wy >= 0) && (wy < h))
+				if ((wy >= 0) && (wy < image_height))
 				{
 					for (int wx = i - 1; wx <= (i + 1); wx++)
 					{
-						if ((wx >= 0) && (wx < w) && ((wx != i) || (wy != j))) // Exclude center point.
+						if ((wx >= 0) && (wx < image_width) && ((wx != i) || (wy != j))) // Exclude center point.
 						{
 							if (identifier == pixeldata->GetPixel(wx, wy))
 							{
@@ -1139,8 +1187,6 @@ bool SuperPixel::SetNeighbors()
 {
 	//  Future exploration: Maybe start with one border pixel at one edge of the bounding box, and walk the circuit.
 
-	int w = gradientdata->GetWidth();
-	int h = gradientdata->GetHeight();
 	Neighbors.clear();
 	FindEdgePixels();
 	if (EdgePixels.size() > 0)
@@ -1157,7 +1203,7 @@ bool SuperPixel::SetNeighbors()
 			{
 				for (int k = i - 1; k <= i + 1; k++)
 				{
-					if ((l >= 0) && (k >= 0) && (l < h) && (k < w) && ((l != j) || (k != i)))
+					if ((l >= 0) && (k >= 0) && (l < image_height) && (k < image_width) && ((l != j) || (k != i)))
 					{
 						int pix = pixeldata->GetPixel(k, l);
 						if ((pix != identifier) && (pix > 0))

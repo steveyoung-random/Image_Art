@@ -517,12 +517,12 @@ FloatPointPair Path::SquareNeighborhood(FloatPointPair vertex, FloatPointPair po
 bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 {
 	std::set<int>* EdgePixels = superpixel->GetEdgePixels();
-	GradData* gradient = superpixel->GetGradient();
+//	GradData* gradient = superpixel->GetGradient();
 	SPixelData* pixeldata = superpixel->GetPixelData();
 
 	int identifier = superpixel->GetIdentifier();
-	int width = gradient->GetWidth();
-	int height = gradient->GetHeight();
+	int width = pixeldata->GetWidth();
+	int height = pixeldata->GetHeight();
 	int neighbors = 0;
 	int direction = 0;
 	int initial_direction = 0;

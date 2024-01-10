@@ -24,6 +24,9 @@
 #define BRUSH_WIDTH 30;
 #define MIX_PAINTS true;
 #define RADIUS_VARIATION true;
+#define DATA_FILE_MAJOR 0;
+#define DATA_FILE_MINOR 2;
+#define FINGERPRINT "IMRT";
 
 struct RectQuad {
 	int x0, y0, x1, y1;

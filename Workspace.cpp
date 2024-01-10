@@ -453,51 +453,49 @@ WorkSpace::WorkSpace(std::string filename, int channel, int nchannel, bool d)
 	superpixel_set.clear();
 }
 
-WorkSpace::WorkSpace(std::string filename, std::string sp_filename, std::string gray_filename, std::string edge_filename, bool d)
+WorkSpace::WorkSpace(std::string sp_filename, bool d)
 {
 
-	data = stbi_load(filename.c_str(), &width, &height, &colorchannels, 0);
-	if (NULL != data)
-	{
-		std::cout << "X: " << width << " Y: " << height << " Colorchannels: " << colorchannels << "\n";
-		bbox.x0 = 0;
-		bbox.y0 = 0;
-		bbox.x1 = width - 1;
-		bbox.y1 = height - 1;
-	}
-	else {
-		throw (std::runtime_error("Unable to load image.\n"));
-	}
+	data == NULL;
+	image == NULL;
+	gray == NULL;
+	edge == NULL;
 
-	image = new ImageData(data, width, height, colorchannels);
-	if (NULL == image)
-	{
-		throw (std::runtime_error("Failed to create ImageData object.\n"));
-	}
-
-	if ("" == gray_filename)
-	{
-		gray = image->gen_gray();
-	}
-	else {
-		gray = new GradData(gray_filename);
-	}
-
-	if ("" == edge_filename)
-	{
-		throw std::runtime_error("Failed to supply grayscale image filename.\n");
-	}
-	else {
-		edge = new GradData(edge_filename);
-	}
-
-	pixeldata = new SPixelData(width, height);
 	diagonals = d;
 	list_head = NULL;
 	list_tail = NULL;
 
 	std::ifstream ifile;
 	ifile.open(sp_filename, std::ios::binary);
+
+	char fingerprint[5];
+	const char fp[5] = FINGERPRINT;
+	int mj = DATA_FILE_MAJOR;
+	int mn = DATA_FILE_MINOR;
+	int major;
+	int minor;
+	ifile.read((char*)(&fingerprint), sizeof(fingerprint));
+	if (0 != strncmp(fingerprint, fp, 5))
+	{
+		throw std::runtime_error("Input file not a valid SuperPixels data file.\n");
+	}
+	ifile.read((char*)(&major), sizeof(major));
+	ifile.read((char*)(&minor), sizeof(minor));
+	std::cout << "Data file version: " << major << "." << minor << "\n";
+	if ((major < mj) || (minor < mn))
+	{
+		throw std::runtime_error("Data file version too old.\n");
+	}
+	ifile.read((char*)(&width), sizeof(width));
+	ifile.read((char*)(&height), sizeof(height));
+	ifile.read((char*)(&colorchannels), sizeof(colorchannels));
+	std::cout << "X: " << width << " Y: " << height << " Colorchannels: " << colorchannels << "\n";
+	bbox.x0 = 0;
+	bbox.y0 = 0;
+	bbox.x1 = width - 1;
+	bbox.y1 = height - 1;
+	pixeldata = new SPixelData(width, height);
+
 	bool more = true;
 
 	int identifier;
@@ -564,12 +562,12 @@ WorkSpace::WorkSpace(std::string filename, std::string sp_filename, std::string 
 
 		if (NULL == list_head)
 		{
-			list_head = new SuperPixel(identifier, edge, pixeldata, seed, NULL, NULL, this, SPType_Processed);
+			list_head = new SuperPixel(identifier, pixeldata, seed, NULL, NULL, this, SPType_Processed);
 			InsertSPIntoIndex(list_head);
 			list_tail = list_head;
 		}
 		else {
-			list_tail = new SuperPixel(identifier, edge, pixeldata, seed, NULL, list_head->GetTail(), this, SPType_Processed);
+			list_tail = new SuperPixel(identifier, pixeldata, seed, NULL, list_head->GetTail(), this, SPType_Processed);
 			InsertSPIntoIndex(list_tail);
 		}
 		list_tail->SetWindow(box);
@@ -888,7 +886,7 @@ bool WorkSpace::CombineSuperPixels(float colormatch)
 			ave1 = current->GetAveColor();
 			std::set<int>* neighbors;
 			neighbors = current->GetNeighbors();
-			for (std::set<int>::iterator iter = neighbors->begin(); iter != neighbors->end(); ++iter)
+			for (std::set<int>::iterator iter = neighbors->begin(); iter != neighbors->end(); ++iter)  // *** Problem here.  254 shows 253 as a neighbor, but not vice versa.
 			{
 				nsp = current->GetByIdentifier(*iter);
 				if (NULL != nsp)
@@ -1004,10 +1002,20 @@ bool WorkSpace::WriteSuperPixelCSV(std::string filename)
 
 bool WorkSpace::WriteSuperPixels(std::string filename)
 {
+	const char fingerprint[5] = FINGERPRINT;
+	int major = DATA_FILE_MAJOR;
+	int minor = DATA_FILE_MINOR;
 	std::ofstream ofile;
 	std::vector<int> sequence;
 	ofile.open(filename, std::ios::binary);
 	current = list_head;
+	ofile.write(reinterpret_cast<const char*>(fingerprint), sizeof(fingerprint));  // Writes fingerprint.
+	ofile.write(reinterpret_cast<const char*>(&major), sizeof(major));   // Writes file version major number.  Currently 0.
+	ofile.write(reinterpret_cast<const char*>(&minor), sizeof(minor));   // Writes file version minor number.  Currently 2.
+	ofile.write(reinterpret_cast<const char*>(&width), sizeof(width));   // Writes width of image.
+	ofile.write(reinterpret_cast<const char*>(&height), sizeof(height)); // Writes height of image.
+	ofile.write(reinterpret_cast<const char*>(&colorchannels), sizeof(colorchannels));  // Writes the number of colorchannels.
+
 	while (NULL != current)
 	{
 		int identifier = current->GetIdentifier();

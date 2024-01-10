@@ -668,7 +668,7 @@ int main(int argc, char** argv)
 		else if ("" != spfile)
 		{
 			std::cout << "Reading SuperPixel input from file.\n";
-			workspace = new WorkSpace(filename, spfile, grayfile, edgefile, diagonals);
+			workspace = new WorkSpace(spfile, diagonals);
 			if (NULL == workspace)
 			{
 				throw std::runtime_error("Failed to create Workspace.\n");
@@ -689,10 +689,10 @@ int main(int argc, char** argv)
 			temppath.append("SuperPixels.svg");
 			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette);
 			std::cout << ".";
-			if (false == workspace->SetAveColors())
-			{
-				throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
-			}
+			//if (false == workspace->SetAveColors())  // *** Is this needed?  If not, then storing basic information in data file means we won't need to load the original image.
+			//{
+			//	throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
+			//}
 			for (int ri = 0; ri < 3; ri++)
 			{
 				std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
@@ -701,10 +701,10 @@ int main(int argc, char** argv)
 					throw std::runtime_error("Error combining SuperPixels.\n");
 				}
 
-				if (false == workspace->SetAveColors())
-				{
-					throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
-				}
+				//if (false == workspace->SetAveColors())
+				//{
+				//	throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
+				//}
 			}
 			if (postproc_windowsize > 0)
 			{
