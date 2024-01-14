@@ -102,6 +102,11 @@ Path::Path(SuperPixel* sp, PointPair start, bool use_meeting_points, bool create
 					p.x = p0.x - dist + 5;
 					line->push_back(superpixel->XY2Pos(p));
 				}
+				else if (dist > 1)
+				{
+					p.x = p0.x - dist + 1;
+					line->push_back(superpixel->XY2Pos(p));
+				}
 				p.x = p0.x;
 				line->push_back(superpixel->XY2Pos(p));
 
@@ -118,6 +123,11 @@ Path::Path(SuperPixel* sp, PointPair start, bool use_meeting_points, bool create
 				else if (dist >= 10)
 				{
 					p.x = p0.x + dist - 5;
+					line->push_back(superpixel->XY2Pos(p));
+				}
+				else if (dist > 1)
+				{
+					p.x = p0.x + dist - 1;
 					line->push_back(superpixel->XY2Pos(p));
 				}
 				p.x = p0.x + dist;
@@ -517,7 +527,7 @@ FloatPointPair Path::SquareNeighborhood(FloatPointPair vertex, FloatPointPair po
 bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 {
 	std::set<int>* EdgePixels = superpixel->GetEdgePixels();
-//	GradData* gradient = superpixel->GetGradient();
+	//	GradData* gradient = superpixel->GetGradient();
 	SPixelData* pixeldata = superpixel->GetPixelData();
 
 	int identifier = superpixel->GetIdentifier();
