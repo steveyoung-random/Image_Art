@@ -1729,7 +1729,14 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 		PointPair seed;
 		seed.y = point / width;
 		seed.x = point - (seed.y * width);
-		SuperPixel* newSP = new SuperPixel(new_id, edge, processed_pixeldata, seed, NULL, processed_tail, this, SPType_Processed);
+		SuperPixel* newSP = NULL;
+		if (NULL == edge)
+		{
+			newSP = new SuperPixel(new_id, processed_pixeldata, seed, NULL, processed_tail, this, SPType_Processed);
+		}
+		else {
+			newSP = new SuperPixel(new_id, edge, processed_pixeldata, seed, NULL, processed_tail, this, SPType_Processed);
+		}
 		if (NULL == newSP)
 		{
 			throw std::runtime_error("Failed to create new SuperPixel in SeparateSuperPixel.\n");

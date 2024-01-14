@@ -1179,6 +1179,16 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			}
 		}
 	}
+	if ((0 == EdgePixels.size())&&(remove_list.size() > 0))  // In rare situations, all points are removed (when there is a 2x2 square).  In such case, set one point.
+	{
+		it = remove_list.begin();
+		int pos = *it;
+		PointPair xy = Pos2XY(pos);
+		int i = xy.x;
+		int j = xy.y;
+		EdgePixels.insert(pos);
+		pixeldata->SetPixel(i, j, identifier);
+	}
 	remove_list.clear();
 	return (changed || global_changed);
 }
