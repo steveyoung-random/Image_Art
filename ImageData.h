@@ -13,6 +13,8 @@
 class GradData;
 class SPixelData;
 
+void write_png_to_mem(void* context, void* data, int size);
+
 class ImageData {
 private:
 	unsigned char* data;
@@ -26,6 +28,7 @@ public:
 	bool CollapseWideData();
 	bool CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop);
 	bool PaintCurve(std::vector<Corner> curve, SPixelData* mask = NULL, int mask_value = 0);
+	unsigned char* GetData();
 	int GetWidth();
 	int GetHeight();
 	int GetColorChannels();
@@ -33,6 +36,7 @@ public:
 	bool Reset();
 	bool SetBackground(Color c);
 	bool write_file(std::string filename);
+
 	GradData* gen_gray(int channel = 0, int nchannel = 0);
 	GradData* gen_diff(ImageData* image2);
 

@@ -4,6 +4,7 @@
 #include "ImageData.h"
 #include "GradData.h"
 #include "SPixelData.h"
+#include "SuperPixel.h"
 
 ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values)
 {
@@ -144,6 +145,11 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 	return true;
 }
 
+unsigned char* ImageData::GetData()
+{
+	return data;
+}
+
 int ImageData::GetWidth()
 {
 	return width;
@@ -231,6 +237,7 @@ bool ImageData::write_file(std::string filename)
 	{
 		throw std::runtime_error("Unable to write out image.\n");
 	}
+
 	return true;
 }
 
@@ -486,4 +493,75 @@ Color ImageData::CIELABconvert(Color input)
 Color ImageData::RGBconvert(Color input)
 {
 	return RGBconvert(input.channel[0], input.channel[1], input.channel[2]);
+}
+
+void write_png_to_mem(void* context, void* data, int size)
+{
+	SuperPixel* sp = (SuperPixel*)context;
+
+	std::string fill_string;
+	fill_string.clear();
+	int count = 0;
+	int remaining_bytes = 0;
+	unsigned char input[3];
+	unsigned char* input_data = (unsigned char*)data;
+	unsigned char output[4];
+	while (count < size)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			if ((count + i) < size)
+			{
+				input[i] = input_data[i+count];
+			}
+			else {
+				input[i] = 0;
+				if (0 == remaining_bytes)
+				{
+					remaining_bytes = 3 - i;
+				}
+			}
+		}
+		uint32_t input_concat = 0;
+		for (int i = 0; i < 3; ++i)
+		{
+			input_concat = input_concat | (input[i] << (16 - 8 * i));
+		}
+		for (int i = 0; i < 4; ++i)
+		{
+			output[i] = 63 & (input_concat >> (18 - 6 * i));
+		}
+
+		for (int i = 0; i < 4; ++i)
+		{
+			std::string c;
+			if ((remaining_bytes > 0) && (i > 1) && (0 == output[i]) && (i + remaining_bytes >= 4))  // =
+			{
+				c = (char)61;
+			}
+			else if (output[i] < 26) // Capital letters
+			{
+				c = (char)(output[i] + 65);
+			}
+			else if (output[i] < 52) // Lower case letters
+			{
+				c = (char)(output[i] + 71);
+			}
+			else if (output[i] < 62) // Numerals
+			{
+				c = (char)(output[i] - 4);
+			}
+			else if (62 == output[i]) // +
+			{
+				c = (char)43;
+			}
+			else                      // /
+			{
+				c = (char)47;
+			}
+			fill_string.append(c);
+		}
+		count = count + 3;
+	}
+	sp->SetFillImage(fill_string);
 }

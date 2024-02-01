@@ -6,27 +6,29 @@
 #define EFFECTIVE_ZERO 0.001
 #define CURVE_ADJUSTMENT 4
 #define MAX_CURVE_FACTOR 80
-#define OUTLINE false;
-#define BACKGROUND 0;
-#define GLITCH1 false;
-#define GLITCH2 false;
-#define GLITCH3 false;
-#define PAINT_SCALE 1;
-#define SCALE_FLOW true;
-#define BRISTLES 40;
-#define FLOW 20.0;
-#define FLOW_VARIATION 10.0;
-#define SUBPIXEL false;
-#define BRUSH_WIDTH_FACTOR 1.8;
-#define BRISTLE_THIN_FACTOR 2.0;
-#define BRUSH_SHAPE shape_straight;
-#define BRUSH_WIDTH_OVERRIDE false;
-#define BRUSH_WIDTH 30;
-#define MIX_PAINTS true;
-#define RADIUS_VARIATION true;
-#define DATA_FILE_MAJOR 0;
-#define DATA_FILE_MINOR 2;
-#define FINGERPRINT "IMRT";
+#define OUTLINE false
+#define BACKGROUND 0
+#define GLITCH1 false
+#define GLITCH2 false
+#define GLITCH3 false
+#define PAINT_SCALE 1
+#define SCALE_FLOW true
+#define BRISTLES 40
+#define FLOW 20.0
+#define FLOW_VARIATION 10.0
+#define SUBPIXEL false
+#define BRUSH_WIDTH_FACTOR 1.8
+#define BRISTLE_THIN_FACTOR 2.0
+#define BRUSH_SHAPE shape_straight
+#define BRUSH_WIDTH_OVERRIDE false
+#define BRUSH_WIDTH 30
+#define MIX_PAINTS true
+#define RADIUS_VARIATION true
+#define DATA_FILE_MAJOR 0
+#define DATA_FILE_MINOR 2
+#define FINGERPRINT "IMRT"
+#define CONTRAST_RADIUS 100
+#define CONTRAST_BOX_MARGIN 2
 
 struct RectQuad {
 	int x0, y0, x1, y1;
@@ -83,4 +85,5 @@ struct Paint_Properties
 	float brush_width = BRUSH_WIDTH;
 	bool mix_paints = MIX_PAINTS;
 	bool radius_variation = RADIUS_VARIATION;
+	int contrast_radius = CONTRAST_RADIUS;
 };

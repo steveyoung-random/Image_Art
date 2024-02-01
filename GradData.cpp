@@ -71,7 +71,7 @@ unsigned char GradData::GetPixel(int x, int y)
 	return data[x + y * width];
 }
 
-int GradData::GetWidth()  // *** Continue here.  Need to check all calls to this and change any where width or height can come from SuperPixel (need to add functions for that to SuperPixel).
+int GradData::GetWidth()
 {
 	return width;
 }

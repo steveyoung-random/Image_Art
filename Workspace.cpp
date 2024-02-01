@@ -853,7 +853,7 @@ bool WorkSpace::SetAveColors()
 		ave = current->SetAveColor(image);
 		PointPair seed = current->GetSeed();
 
-//		std::cout << current->GetIdentifier() << ", " << seed.x << ", " << seed.y << ", " << current->GetSize() << ", " << current->GetAveError() << "\n";
+		//		std::cout << current->GetIdentifier() << ", " << seed.x << ", " << seed.y << ", " << current->GetSize() << ", " << current->GetAveError() << "\n";
 		std::cout << ".";
 		current->SetNeighbors();
 		//if (current->SetNeighbors())
@@ -1047,19 +1047,24 @@ bool WorkSpace::WriteSuperPixels(std::string filename)
 	return true;
 }
 
-bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon, bool fine, int palette_size)
+bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon, bool fine, int palette_size, bool use_contrast)
 {
 	// Mode: 0=normal
 	//       1=post-processed
 	// Polygon - Use the optimal polygon points.
 
+	int w, h, off_x, off_y;
 	bool use_palette = false;
 	if (palette_size > 0)
 	{
 		use_palette = true;
+		use_contrast = false;
 		FindPalette(mode, palette_size);
 	}
-
+	if (use_contrast)
+	{
+		GenerateContrasts(mode);
+	}
 	std::ofstream ofile;
 	//	std::vector<int> sequence;
 	ofile.open(filename);
@@ -1068,7 +1073,7 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 	ofile << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n";
 	ofile << "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\" >\n";
 	ofile << "<svg viewBox = \"0 0 " << (int)(width + 1) << " " << (int)(height + 1) << "\"\n";
-	ofile << "xmlns = \"http://www.w3.org/2000/svg\" version = \"1.1\">\n";
+	ofile << "xmlns = \"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version = \"1.1\">\n";
 
 	int palette_index = 0;
 	if (use_palette)
@@ -1103,6 +1108,23 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 				{
 					if (use_palette)
 					{
+						ofile << "<path d = \"M ";
+					}
+					else if (use_contrast)
+					{
+						RectQuad bbox = current->GetWindow();
+						w = bbox.x1 - bbox.x0 + 1 + 2 * CONTRAST_BOX_MARGIN;
+						h = bbox.y1 - bbox.y0 + 1 + 2 * CONTRAST_BOX_MARGIN;
+						off_x = bbox.x0 - CONTRAST_BOX_MARGIN;
+						off_y = bbox.y0 - CONTRAST_BOX_MARGIN;
+						ofile << "<defs>\n<image id=\"img" << current->GetIdentifier() << "\" width=\"" << w << "px\" height=\"" << h << "px\" ";
+						ofile << "xlink:href=\"data:image/png;base64,";
+						ofile << current->GetFillImage();
+						ofile << "\"/>\n</defs>\n";
+						ofile << "<clipPath id=\"_clip" << current->GetIdentifier() << "\">\n";
+						//ofile << "\" x=\"" << bbox.x0-CONTRAST_BOX_MARGIN << "\" y=\"" << bbox.y0-CONTRAST_BOX_MARGIN << "\" width=\"" << w << "px\" height=\"" << h << "px\" />\n";
+						//ofile << "</pattern>\n";
+						//ofile << "<path fill=\"url(#img" << current->GetIdentifier() << ")\" d = \"M ";
 						ofile << "<path d = \"M ";
 					}
 					else {
@@ -1258,8 +1280,18 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 							sub_p = sub_p->GetNext();
 						}
 					}
+					if (use_contrast)
+					{
+						ofile << "\"\/>\n";
+						ofile << "</clipPath>\n<g clip-path=\"url(#_clip" << current->GetIdentifier() << ")\">\n<use xlink:href=\"#img" << current->GetIdentifier() << "\" ";
+						ofile << "x = \"" << off_x << "\" y=\"" << off_y << "\" width=\"" << w << "px\" height=\"" << h << "px\"/>\n";
+						ofile << "</g>\n";
+					}
 				}
-				ofile << "\"\/>\n";
+				if (false == use_contrast)
+				{
+					ofile << "\"\/>\n";
+				}
 				p = p->GetNext();
 			}
 			current = current->GetNext();
@@ -1779,7 +1811,6 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 //       1=post-processed
 //       2=skeleton
 //		 3=painted paths w/out outlines
-//       4=painted paths w/ outlines
 // Background: 0=white
 //             1=black
 // glitch1: Create a glitched effect for the straight painted portions.
@@ -1928,6 +1959,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		img->CollapseWideData();
 		return img;
 	}
+	return NULL;
 }
 
 ImageData* WorkSpace::Gradient2Image(int mode)
@@ -1961,6 +1993,30 @@ ImageData* WorkSpace::Gradient2Image(int mode)
 	}
 
 	return gray->Gradient2Image(mode);
+}
+
+bool WorkSpace::GenerateContrasts(int mode)
+{
+	// Mode: 0=normal
+	//       1=post-processed
+	if (0 == mode)
+	{
+		current = list_head;
+	}
+	else if (1 == mode)
+	{
+		current = processed_head;
+	}
+	else
+	{
+		return false;  // Should not be used for anything else. 
+	}
+	while (NULL != current)
+	{
+		current->GenerateContrastImage(current->GetPixelData(), CONTRAST_RADIUS);
+		current = current->GetNext();
+	}
+	return true;
 }
 
 ColorPalette::ColorPalette(int num, SuperPixel* sp)

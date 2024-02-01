@@ -41,6 +41,7 @@ SuperPixel::SuperPixel(int id, GradData* graddat, SPixelData* pixdat, PointPair 
 	num_paths = 0;
 	type = t;
 	EdgePixelsCurrent = false;
+	fill_image.clear();
 }
 
 SuperPixel::SuperPixel(const SuperPixel& tsp, GradData* graddat, SPixelData* pixdat, SuperPixel* n, SuperPixel* p, WorkSpace* ws, SuperPixelType t)
@@ -75,6 +76,7 @@ SuperPixel::SuperPixel(const SuperPixel& tsp, GradData* graddat, SPixelData* pix
 	num_paths = 0;
 	type = t;
 	EdgePixelsCurrent = false;
+	fill_image.clear();
 }
 
 SuperPixel::SuperPixel(int id, SPixelData* pixdat, PointPair point, SuperPixel* n, SuperPixel* p, WorkSpace* ws, SuperPixelType t)
@@ -112,6 +114,7 @@ SuperPixel::SuperPixel(int id, SPixelData* pixdat, PointPair point, SuperPixel* 
 	num_paths = 0;
 	type = t;
 	EdgePixelsCurrent = false;
+	fill_image.clear();
 }
 
 SuperPixel::~SuperPixel()
@@ -688,6 +691,299 @@ bool SuperPixel::FindPaths(bool use_meeting_points, bool polygon, bool fine)
 	return true;
 }
 
+bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
+{
+	ImageData* img = NULL;
+	SuperPixel* current = NULL;
+	std::set<Contrast_Histogram> histogram_index;
+	std::set<int> present_identifiers;
+	unsigned int* hist_entries;
+	Contrast_Histogram current_hist;
+	int* disc_chord = NULL;
+	int wx, wy, img_x, img_y, disc_index, pix_value, local_identifier, location;
+	double channel_squared[3] = { 0, 0, 0 };
+	unsigned long long count = 0;
+	std::set<Contrast_Histogram>::iterator it;
+	Color local_color;
+	RectQuad bbox;
+	bbox.x0 = boundingbox.x0 - CONTRAST_BOX_MARGIN;
+	bbox.y0 = boundingbox.y0 - CONTRAST_BOX_MARGIN;
+	bbox.x1 = boundingbox.x1 + CONTRAST_BOX_MARGIN;
+	bbox.y1 = boundingbox.y1 + CONTRAST_BOX_MARGIN;
+	int width = 1 + (bbox.x1 - bbox.x0);
+	int height = 1 + (bbox.y1 - bbox.y0);
+	int img_width = pdata->GetWidth();
+	int img_height = pdata->GetHeight();
+
+	// Prepare the hist_entries and histogram_index, which hold the actual histogram and a set that translates a SuperPixel identifier into the location in the histogram.
+	// Also prepare the present_identifiers, which is a set of those identifiers in the histogram with more than zero entries.
+	hist_entries = (unsigned int*)malloc(sizeof(unsigned int) * Count());
+	if (NULL == hist_entries)
+	{
+		throw(std::runtime_error("Unable to allocate memory for hist_entries for GenerateContrastImage.\n"));
+	}
+
+	histogram_index.clear();
+	present_identifiers.clear();
+	img = new ImageData(NULL, width, height, 3);
+	current = GetHead();
+	while (NULL != current)
+	{
+		current_hist.identifier = current->GetIdentifier();
+		current_hist.location = count;
+		current_hist.sp = current;
+		histogram_index.insert(current_hist);
+		hist_entries[count] = 0;
+		count++;
+		current = current->GetNext();
+	}
+
+	// Prepare disc_chord, contains the horizontal size of the disc at each vertical offset from the origin.
+	disc_chord = (int*)malloc(sizeof(int) * (radius + 1));
+	if (NULL == disc_chord)
+	{
+		throw (std::runtime_error("Unable to allocate memory for disc_chord for GenerateContrastImage.\n"));
+	}
+	for (int i = 0; i <= radius; i++)
+	{
+		disc_chord[i] = sqrt(radius * radius - i * i);
+	}
+
+	// Calculate histogram for first pixel, at location bbox.x0, bbox.y0.
+	for (wy = -radius; wy <= radius; ++wy)  // wx and wy are offsets within bbox.
+	{
+		disc_index = abs(wy);
+		img_y = wy + bbox.y0;
+		if ((img_y >= 0) && (img_y < img_height))
+		{
+			for (wx = -disc_chord[disc_index]; wx <= disc_chord[disc_index]; ++wx)
+			{
+				img_x = wx + bbox.x0;
+				if ((img_x >= 0) && (img_x < img_width))
+				{
+					pix_value = pdata->GetPixel(img_x, img_y);
+					if (pix_value > 0)
+					{
+						current_hist.identifier = pix_value;
+						it = histogram_index.find(current_hist);
+						if (it != histogram_index.end())
+						{
+							current_hist = *it;
+							hist_entries[current_hist.location]++;  // Increase histogram count for this SuperPixel.
+							present_identifiers.insert(pix_value);  // Add this encountered SuperPixel to list of ones in the current histogram.
+						}
+					}
+				}
+			}
+		}
+	}
+	// Calculate color for location bbox.x0, bbox.y0.
+	//for (int chan = 0; chan < 3; ++chan)
+	//{
+	//	channel_squared[chan] = 0;
+	//}
+	//count = 0;
+	//for (std::set<int>::iterator present_it = present_identifiers.begin(); present_it != present_identifiers.end(); ++present_it)  // Loop through the SuperPixels present here.
+	//{
+	//	local_identifier = *present_it;
+	//	current_hist.identifier = local_identifier;
+	//	it = histogram_index.find(current_hist);
+	//	if (it != histogram_index.end())
+	//	{
+	//		current_hist = *it;
+	//		int local_count = hist_entries[current_hist.location];
+	//		local_color = current_hist.sp->GetAveColor();
+	//		for (int chan = 0; chan < 3; ++chan)
+	//		{
+	//			channel_squared[chan] += local_count * (local_color.channel[chan] * local_color.channel[chan]);
+	//		}
+	//		count += local_count;
+	//	}
+	//}
+	//if (count > 0)
+	//{
+	//	for (int chan = 0; chan < 3; ++chan)
+	//	{
+	//		local_color.channel[chan] = sqrt(channel_squared[chan] / count);
+	//	}
+	//	img->SetPixel(bbox.x0, bbox.y0, local_color);
+	//}
+	int direction = 1;  // 1 for moving to the right, -1 for moving to the left.
+	int i = bbox.x0;
+	int j = bbox.y0;
+	while (j <= bbox.y1)
+	{
+		// Now do a horizontal strip.
+		if (((direction > 0) && (i > bbox.x0)) || ((direction < 0) && (i < bbox.x1))) // If i == bbox.x0 or bbox.x1, then the histogram may already have been filled out, no update needed.
+		{
+			for (wy = -radius; wy <= radius; wy++)
+			{
+				img_y = j + wy;
+				if ((img_y >= 0) && (img_y < img_height))
+				{
+					disc_index = abs(wy);
+					img_x = (i + direction * disc_chord[disc_index]);  // Add to the histogram.  Newly in the disc.
+					if ((img_x >= 0) && (img_x < img_width))
+					{
+						pix_value = pdata->GetPixel(img_x, img_y);
+						if (pix_value > 0)
+						{
+							current_hist.identifier = pix_value;
+							it = histogram_index.find(current_hist);
+							if (it != histogram_index.end())
+							{
+								current_hist = *it;
+								hist_entries[current_hist.location]++;  // Increase histogram count for this SuperPixel.
+								present_identifiers.insert(pix_value);  // Add this encountered SuperPixel to list of ones in the current histogram.
+							}
+						}
+					}
+					img_x = (i - direction * disc_chord[disc_index] - direction);  // Subtract from the histogram.  Just to the outside of the disc.
+					if ((img_x >= 0) && (img_x < img_width))
+					{
+						pix_value = pdata->GetPixel(img_x, img_y);
+						if (pix_value > 0)
+						{
+							current_hist.identifier = pix_value;
+							it = histogram_index.find(current_hist);
+							if (it != histogram_index.end())
+							{
+								current_hist = *it;
+								hist_entries[current_hist.location]--;  // Decrease histogram count for this SuperPixel.
+								if (0 == hist_entries[current_hist.location])
+								{
+									present_identifiers.erase(pix_value);  // Remove this encountered SuperPixel from the list of ones in the current histogram.
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		// Calculate color for location i, j.
+		for (int chan = 0; chan < 3; ++chan)
+		{
+			channel_squared[chan] = 0;
+		}
+		count = 0;
+		for (std::set<int>::iterator present_it = present_identifiers.begin(); present_it != present_identifiers.end(); ++present_it)  // Loop through the SuperPixels present here.
+		{
+			local_identifier = *present_it;
+			current_hist.identifier = local_identifier;
+			it = histogram_index.find(current_hist);
+			if (it != histogram_index.end())
+			{
+				current_hist = *it;
+				int local_count = hist_entries[current_hist.location];
+				local_color = current_hist.sp->GetAveColor();
+				for (int chan = 0; chan < 3; ++chan)
+				{
+					channel_squared[chan] += local_count * (local_color.channel[chan] * local_color.channel[chan]);
+				}
+				count += local_count;
+			}
+		}
+		if (count > 0)
+		{
+			for (int chan = 0; chan < 3; ++chan)
+			{
+				local_color.channel[chan] = sqrt(channel_squared[chan] / count);
+			}
+			local_color = CalculateContrastColor(local_color);
+			img->SetPixel(i-bbox.x0, j-bbox.y0, local_color);
+		}
+		// Move horizontally
+		i += direction;
+		if (((i < bbox.x0) && (direction < 0)) || ((i > bbox.x1) && (direction > 0))) // Need to drop down and reverse directions.
+		{
+			j++;
+			i = i - direction;
+			direction = -direction;
+			if (j <= bbox.y1)
+			{
+				for (wx = -radius; wx <= radius; ++wx)
+				{
+					img_x = wx + i;
+					if ((img_x >= 0) && (img_x < img_width))
+					{
+						disc_index = abs(wx);
+						img_y = (j + disc_chord[disc_index]);  // Add to the histogram.  Bottommost in the disc.
+						if ((img_y >= 0) && (img_y < img_height))
+						{
+							pix_value = pdata->GetPixel(img_x, img_y);
+							if (pix_value > 0)
+							{
+								current_hist.identifier = pix_value;
+								it = histogram_index.find(current_hist);
+								if (it != histogram_index.end())
+								{
+									current_hist = *it;
+									hist_entries[current_hist.location]++;  // Increase histogram count for this SuperPixel.
+									present_identifiers.insert(pix_value);  // Add this encountered SuperPixel to list of ones in the current histogram.
+								}
+							}
+						}
+						img_y = (j - disc_chord[disc_index] - 1);  // Subtract from the histogram.  Just above the topmost in the disc.
+						if ((img_y >= 0) && (img_y < img_height))
+						{
+							pix_value = pdata->GetPixel(img_x, img_y);
+							if (pix_value > 0)
+							{
+								current_hist.identifier = pix_value;
+								it = histogram_index.find(current_hist);
+								if (it != histogram_index.end())
+								{
+									current_hist = *it;
+									hist_entries[current_hist.location]--;  // Decrease histogram count for this SuperPixel.
+									if (0 == hist_entries[current_hist.location])
+									{
+										present_identifiers.erase(pix_value);  // Remove this encountered SuperPixel from the list of ones in the current histogram.
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	fill_image.clear();
+
+	if (0 == stbi_write_png_to_func(write_png_to_mem, this, width, height, 3, img->GetData(), 3*width))
+	{
+		throw std::runtime_error("Unable to calculate fill_image.\n");
+	}
+
+	free(disc_chord);
+	delete(img);
+	free(hist_entries);
+	return true;
+}
+
+Color SuperPixel::CalculateContrastColor(Color opposing)
+{
+	Color ret;
+	ret = AveColor;
+	for (int chan = 0; chan < 3; ++chan)
+	{
+		int post = ret.channel[chan];
+		post = post - ((int)opposing.channel[chan] - post)/2;
+		if (post <= 0)
+		{
+			ret.channel[chan] = 0;
+		}
+		else if (post >= 255)
+		{
+			ret.channel[chan] = 255;
+		}
+		else {
+			ret.channel[chan] = post;
+		}
+	}
+	return ret;
+}
+
 bool SuperPixel::CalculateSize()
 {
 	size = 0;
@@ -734,6 +1030,11 @@ float SuperPixel::GetAveError()
 std::set<int>* SuperPixel::GetEdgePixels()
 {
 	return &EdgePixels;
+}
+
+std::string SuperPixel::GetFillImage()
+{
+	return fill_image;
 }
 
 GradData* SuperPixel::GetGradient()
@@ -1179,7 +1480,7 @@ bool SuperPixel::Thin_Subiteration(int n, bool global_changed)
 			}
 		}
 	}
-	if ((0 == EdgePixels.size())&&(remove_list.size() > 0))  // In rare situations, all points are removed (when there is a 2x2 square).  In such case, set one point.
+	if ((0 == EdgePixels.size()) && (remove_list.size() > 0))  // In rare situations, all points are removed (when there is a 2x2 square).  In such case, set one point.
 	{
 		it = remove_list.begin();
 		int pos = *it;
@@ -1534,6 +1835,12 @@ Color SuperPixel::SetAveColor(Color c)
 bool SuperPixel::SetColorBucket(int b)
 {
 	color_bucket = b;
+	return true;
+}
+
+bool SuperPixel::SetFillImage(std::string fill)
+{
+	fill_image = fill;
 	return true;
 }
 

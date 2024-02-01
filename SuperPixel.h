@@ -18,6 +18,17 @@ class SkeletonPointCollection;
 
 enum SuperPixelType{SPType_Plain, SPType_Processed, SPType_Skeleton};
 
+struct Contrast_Histogram
+{
+	int identifier;
+	unsigned int location;
+	SuperPixel* sp;
+	bool operator< (const Contrast_Histogram& rhs) const
+	{
+		return identifier < rhs.identifier;
+	}
+};
+
 class SuperPixel {
 private:
 	SPixelData* pixeldata = NULL;
@@ -46,6 +57,7 @@ private:
 	bool EdgePixelsCurrent;
 	int image_width;
 	int image_height;
+	std::string fill_image;
 
 public:
 	SuperPixel(int id, GradData* graddat, SPixelData* pixdat, PointPair point, SuperPixel* n, SuperPixel* p, WorkSpace* ws = NULL, SuperPixelType t = SPType_Plain);
@@ -61,7 +73,8 @@ public:
 	float ColorDifference(Color c1, Color c2);
 	bool FindEdgePixels();
 	bool FindPaths(bool use_meeting_points = true, bool polygon = true, bool fine = true);
-
+	bool GenerateContrastImage(SPixelData* pdata, int radius);
+	Color CalculateContrastColor(Color opposing);
 
 	Color GetAveColor();
 	float GetAveError();
@@ -69,6 +82,7 @@ public:
 	FloatPointPair GetCentroid();
 	int GetColorBucket();
 	std::set<int>* GetEdgePixels();
+	std::string GetFillImage();
 	GradData* GetGradient();
 	SuperPixel* GetHead();
 	int GetIdentifier();
@@ -92,6 +106,7 @@ public:
 	Color SetAveColor(ImageData* image);
 	Color SetAveColor(Color c);
 	bool SetColorBucket(int b);
+	bool SetFillImage(std::string fill);
 	bool SetSize(int s);
 	bool SetIdentifierandBox(int id, RectQuad box);
 	bool SetNeighbors();
