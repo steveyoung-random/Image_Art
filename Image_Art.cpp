@@ -32,7 +32,6 @@
 #define SEEDS_OUT false;
 #define CLOSE_FIRST false;
 #define TEST_FILE "SNC00015.jpg"
-#define USE_CONTRAST false;
 
 
 int main(int argc, char** argv)
@@ -62,7 +61,7 @@ int main(int argc, char** argv)
 	bool early_palette = EARLY_PALETTE;
 	bool seeds_out = SEEDS_OUT;
 	bool close_first = CLOSE_FIRST;
-	bool use_contrast = USE_CONTRAST;
+	int contrast_radius = CONTRAST_RADIUS;
 
 	std::string path = "";
 	std::string inpath = "";
@@ -150,13 +149,7 @@ int main(int argc, char** argv)
 			}
 			else if (tag == "contrast")
 			{
-				if (atoi(value.c_str()) > 0)
-				{
-					use_contrast = true;
-				}
-				else {
-					use_contrast = false;
-				}
+				contrast_radius = atoi(value.c_str());
 			}
 			else if ((tag == "d") || (tag == "diagonals") || (tag == "diagonal"))
 			{
@@ -466,7 +459,7 @@ int main(int argc, char** argv)
 		std::cout << "Diagonals: " << diagonals << " Outlines: " << prop.outline << "\n";
 		std::cout << "Path: " << path << " Inpath: " << inpath << "\n";
 		std::cout << "Fine points for SVG: " << fine << " Polygons for SVG: " << polygon << "\n";
-		std::cout << "Use contrast: " << use_contrast << "\n";
+		std::cout << "Use contrast: " << contrast_radius << "\n";
 		std::cout << "Palette size: " << palette << " Early palette reduction: " << early_palette << " Mix paints: " << prop.mix_paints << "\n";
 		std::cout << "Paint scale: " << prop.paint_scale << "\n";
 		std::cout << "Bristle coefficient: " << prop.bristles << " Sub-pixel: " << prop.sub_pixel << " Bristle thinness factor: " << prop.bristle_thin_factor << "\n";
@@ -700,7 +693,7 @@ int main(int argc, char** argv)
 			std::cout << ".";
 			temppath = path;
 			temppath.append("SuperPixels.svg");
-			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, false);
+			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
 			std::cout << ".";
 			//if (false == workspace->SetAveColors())  // *** Is this needed?  If not, then storing basic information in data file means we won't need to load the original image.
 			//{
@@ -735,7 +728,7 @@ int main(int argc, char** argv)
 			std::cout << ".";
 			temppath = path;
 			temppath.append("SuperPixels_b.svg");
-			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, false);
+			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
 			std::cout << ".";
 			ImageData* data_revised = workspace->GenerateImage(0, prop);
 			temppath = path;
@@ -765,7 +758,7 @@ int main(int argc, char** argv)
 				//workspace->FindPaths(1, polygon, fine);
 				temppath = path;
 				temppath.append("SuperPixels_Post.svg");
-				workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, use_contrast);
+				workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
 				std::cout << ".";
 				data_revised = workspace->GenerateImage(1, prop);
 				temppath = path;
@@ -948,7 +941,7 @@ int main(int argc, char** argv)
 					{
 						temppath = path;
 						temppath.append("SuperPixels_Post.svg");
-						workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, use_contrast);
+						workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
 						std::cout << ".";
 						data_revised = workspace->GenerateImage(1, prop);
 						temppath = path;
@@ -961,7 +954,7 @@ int main(int argc, char** argv)
 					std::cout << ".";
 					temppath = path;
 					temppath.append("SuperPixels.svg");
-					workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette);
+					workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
 					std::cout << ".";
 				}
 

@@ -1047,7 +1047,7 @@ bool WorkSpace::WriteSuperPixels(std::string filename)
 	return true;
 }
 
-bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon, bool fine, int palette_size, bool use_contrast)
+bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon, bool fine, int palette_size, int contrast_radius)
 {
 	// Mode: 0=normal
 	//       1=post-processed
@@ -1055,6 +1055,7 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 
 	int w, h, off_x, off_y;
 	bool use_palette = false;
+	bool use_contrast = (0 != contrast_radius);
 	if (palette_size > 0)
 	{
 		use_palette = true;
@@ -1063,7 +1064,7 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 	}
 	if (use_contrast)
 	{
-		GenerateContrasts(mode);
+		GenerateContrasts(mode, contrast_radius);
 	}
 	std::ofstream ofile;
 	//	std::vector<int> sequence;
@@ -1122,9 +1123,6 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 						ofile << current->GetFillImage();
 						ofile << "\"/>\n</defs>\n";
 						ofile << "<clipPath id=\"_clip" << current->GetIdentifier() << "\">\n";
-						//ofile << "\" x=\"" << bbox.x0-CONTRAST_BOX_MARGIN << "\" y=\"" << bbox.y0-CONTRAST_BOX_MARGIN << "\" width=\"" << w << "px\" height=\"" << h << "px\" />\n";
-						//ofile << "</pattern>\n";
-						//ofile << "<path fill=\"url(#img" << current->GetIdentifier() << ")\" d = \"M ";
 						ofile << "<path d = \"M ";
 					}
 					else {
@@ -1995,7 +1993,7 @@ ImageData* WorkSpace::Gradient2Image(int mode)
 	return gray->Gradient2Image(mode);
 }
 
-bool WorkSpace::GenerateContrasts(int mode)
+bool WorkSpace::GenerateContrasts(int mode, int contrast_radius)
 {
 	// Mode: 0=normal
 	//       1=post-processed
@@ -2013,7 +2011,7 @@ bool WorkSpace::GenerateContrasts(int mode)
 	}
 	while (NULL != current)
 	{
-		current->GenerateContrastImage(current->GetPixelData(), CONTRAST_RADIUS);
+		current->GenerateContrastImage(current->GetPixelData(), contrast_radius);
 		current = current->GetNext();
 	}
 	return true;

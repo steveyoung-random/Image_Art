@@ -27,7 +27,7 @@
 #define DATA_FILE_MAJOR 0
 #define DATA_FILE_MINOR 2
 #define FINGERPRINT "IMRT"
-#define CONTRAST_RADIUS 100
+#define CONTRAST_RADIUS 0
 #define CONTRAST_BOX_MARGIN 2
 
 struct RectQuad {
@@ -85,5 +85,4 @@ struct Paint_Properties
 	float brush_width = BRUSH_WIDTH;
 	bool mix_paints = MIX_PAINTS;
 	bool radius_variation = RADIUS_VARIATION;
-	int contrast_radius = CONTRAST_RADIUS;
 };

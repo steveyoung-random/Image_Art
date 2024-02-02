@@ -693,6 +693,10 @@ bool SuperPixel::FindPaths(bool use_meeting_points, bool polygon, bool fine)
 
 bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
 {
+	if (radius < 0)
+	{
+		radius = 0;
+	}
 	ImageData* img = NULL;
 	SuperPixel* current = NULL;
 	std::set<Contrast_Histogram> histogram_index;
@@ -963,24 +967,37 @@ bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
 
 Color SuperPixel::CalculateContrastColor(Color opposing)
 {
-	Color ret;
-	ret = AveColor;
-	for (int chan = 0; chan < 3; ++chan)
+	ImageData* img = workspace->GetImage();
+	Color ret = img->CIELABconvert(AveColor);
+	Color op = img->CIELABconvert(opposing);
+	float post = ret.channel[0] - (op.channel[0] - ret.channel[0]) / 2;;
+	if (post < 0)
 	{
-		int post = ret.channel[chan];
-		post = post - ((int)opposing.channel[chan] - post)/2;
-		if (post <= 0)
-		{
-			ret.channel[chan] = 0;
-		}
-		else if (post >= 255)
-		{
-			ret.channel[chan] = 255;
-		}
-		else {
-			ret.channel[chan] = post;
-		}
+		post = 0;
 	}
+	else if (post > 100)
+	{
+		post = 100;
+	}
+	ret.channel[0] = post;
+	ret = img->RGBconvert(ret);
+
+	//for (int chan = 0; chan < 3; ++chan)
+	//{
+	//	int post = ret.channel[chan];
+	//	post = post - ((int)opposing.channel[chan] - post)/2;
+	//	if (post <= 0)
+	//	{
+	//		ret.channel[chan] = 0;
+	//	}
+	//	else if (post >= 255)
+	//	{
+	//		ret.channel[chan] = 255;
+	//	}
+	//	else {
+	//		ret.channel[chan] = post;
+	//	}
+	//}
 	return ret;
 }
 

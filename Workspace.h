@@ -91,7 +91,7 @@ public:
 	bool WriteSeeds(std::string filename);
 	bool WriteSuperPixelCSV(std::string filename);
 	bool WriteSuperPixels(std::string filename);
-	bool WriteSuperPixelsSVG(std::string filename, int mode = 0, bool polygon = false, bool fine = false, int palette_size=0, bool use_contrast=false);
+	bool WriteSuperPixelsSVG(std::string filename, int mode = 0, bool polygon = false, bool fine = false, int palette_size=0, int contrast_radius=0);
 	bool WritePaintCurvesSVG(std::string filename);
 	bool SplitSuperPixels(float num_sigmas);
 	bool ThinSuperPixels(bool glitch3 = false);
@@ -108,7 +108,7 @@ public:
 	ImageData* GenerateImage(int mode, Paint_Properties prop);
 	ImageData* Gradient2Image(int mode = 0);
 
-	bool GenerateContrasts(int mode = 0);
+	bool GenerateContrasts(int mode = 0, int contrast_radius = 0);
 
 	int GetXdiv();
 	int GetYdiv();
