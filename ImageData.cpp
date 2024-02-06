@@ -75,21 +75,51 @@ Color ImageData::GetPixel(int x, int y)
 	return ret;
 }
 
-bool ImageData::CollapseWideData()
+bool ImageData::CollapseWideData(bool dither)
 {
-	long maxpos = width * height * colorchannels;
-	for (long pos = 0; pos < maxpos; ++pos)
+	long pos;
+	int line_pixels = width * colorchannels;
+	for (long j = 0; j < height; ++j)
 	{
-		if (data_wide[pos] > 255)
+		for (long i = 0; i < width; ++i)
 		{
-			data[pos] = 255;
+			for (int chan = 0; chan < colorchannels; ++chan)
+			{
+				pos = j * line_pixels + colorchannels * i + chan;
+				if (data_wide[pos] >= 254.5)
+				{
+					data[pos] = 255;
+				}
+				else if (data_wide[pos] < 0)
+				{
+					data[pos] = 0;
+				}
+				else
+				{
+					data[pos] = (unsigned char)(data_wide[pos] + 0.5);
+				}
+				if (dither)
+				{
+					float error = (data_wide[pos] - data[pos]) / 16.0;
+					if (i < (width - 1))
+					{
+						data_wide[pos + colorchannels] += 7.0 * error; // Right pixel
+						if (j < (height - 1))
+						{
+							data_wide[pos + line_pixels + colorchannels] += error; // Lower right pixel
+						}
+					}
+					if (j < (height - 1))
+					{
+						data_wide[pos + line_pixels] += 5.0 * error;  // Lower pixel
+						if (i > 0)
+						{
+							data_wide[pos + line_pixels - colorchannels] += 3.0 * error; // Lower left pixel
+						}
+					}
+				}
+			}
 		}
-		else if (data_wide[pos] < 0)
-		{
-			data[pos] = 0;
-		}
-		else
-			data[pos] = (unsigned char)data_wide[pos];
 	}
 	return true;
 }
@@ -512,7 +542,7 @@ void write_png_to_mem(void* context, void* data, int size)
 		{
 			if ((count + i) < size)
 			{
-				input[i] = input_data[i+count];
+				input[i] = input_data[i + count];
 			}
 			else {
 				input[i] = 0;

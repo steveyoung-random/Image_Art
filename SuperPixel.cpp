@@ -729,7 +729,7 @@ bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
 
 	histogram_index.clear();
 	present_identifiers.clear();
-	img = new ImageData(NULL, width, height, 3);
+	img = new ImageData(NULL, width, height, 3, true);
 	current = GetHead();
 	while (NULL != current)
 	{
@@ -953,7 +953,10 @@ bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
 	}
 
 	fill_image.clear();
-
+	if (false == img->CollapseWideData(true))
+	{
+		throw std::runtime_error("Failed to collapse data_wide in GenerateContrastImage.\n");
+	}
 	if (0 == stbi_write_png_to_func(write_png_to_mem, this, width, height, 3, img->GetData(), 3*width))
 	{
 		throw std::runtime_error("Unable to calculate fill_image.\n");

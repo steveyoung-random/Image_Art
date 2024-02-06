@@ -1100,11 +1100,14 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 		{
 			ofile << "<g fill=\"#" << palette->TranslateColorToString(palette->GetColorByIndex(palette_index)) << "\">\n";
 		}
+		int p_count;
 		while (NULL != current)
 		{
 			Path* p = current->GetPathHead();
+			p_count = 0;
 			while (NULL != p)
 			{
+				p_count++;
 				if ((false == use_palette) || (current->GetColorBucket() == palette_index))
 				{
 					if (use_palette)
@@ -1118,11 +1121,11 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 						h = bbox.y1 - bbox.y0 + 1 + 2 * CONTRAST_BOX_MARGIN;
 						off_x = bbox.x0 - CONTRAST_BOX_MARGIN;
 						off_y = bbox.y0 - CONTRAST_BOX_MARGIN;
-						ofile << "<defs>\n<image id=\"img" << current->GetIdentifier() << "\" width=\"" << w << "px\" height=\"" << h << "px\" ";
+						ofile << "<defs>\n<image id=\"img" << current->GetIdentifier() << "_" << p_count << "\" width=\"" << w << "px\" height=\"" << h << "px\" ";
 						ofile << "xlink:href=\"data:image/png;base64,";
 						ofile << current->GetFillImage();
 						ofile << "\"/>\n</defs>\n";
-						ofile << "<clipPath id=\"_clip" << current->GetIdentifier() << "\">\n";
+						ofile << "<clipPath id=\"_clip" << current->GetIdentifier() << "_" << p_count << "\">\n";
 						ofile << "<path d = \"M ";
 					}
 					else {
@@ -1281,7 +1284,7 @@ bool WorkSpace::WriteSuperPixelsSVG(std::string filename, int mode, bool polygon
 					if (use_contrast)
 					{
 						ofile << "\"\/>\n";
-						ofile << "</clipPath>\n<g clip-path=\"url(#_clip" << current->GetIdentifier() << ")\">\n<use xlink:href=\"#img" << current->GetIdentifier() << "\" ";
+						ofile << "</clipPath>\n<g clip-path=\"url(#_clip" << current->GetIdentifier() << "_" << p_count << ")\">\n<use xlink:href=\"#img" << current->GetIdentifier() << "_" << p_count << "\" ";
 						ofile << "x = \"" << off_x << "\" y=\"" << off_y << "\" width=\"" << w << "px\" height=\"" << h << "px\"/>\n";
 						ofile << "</g>\n";
 					}
@@ -1954,7 +1957,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				current = current->GetNext();
 			}
 		}
-		img->CollapseWideData();
+		img->CollapseWideData(false);
 		return img;
 	}
 	return NULL;

@@ -32,6 +32,8 @@
 #define SEEDS_OUT false;
 #define CLOSE_FIRST false;
 #define TEST_FILE "SNC00015.jpg"
+// File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint
+#define FILE_OUTPUT 255
 
 
 int main(int argc, char** argv)
@@ -62,6 +64,9 @@ int main(int argc, char** argv)
 	bool seeds_out = SEEDS_OUT;
 	bool close_first = CLOSE_FIRST;
 	int contrast_radius = CONTRAST_RADIUS;
+	unsigned char file_output = FILE_OUTPUT;
+
+	ImageData* data_revised = NULL;
 
 	std::string path = "";
 	std::string inpath = "";
@@ -186,6 +191,10 @@ int main(int argc, char** argv)
 			else if ((tag == "f") || (tag == "filename"))
 			{
 				filename = value;
+			}
+			else if ((tag == "fo") || (tag == "file_output") || (tag == "output"))
+			{
+				file_output = atoi(value.c_str());
 			}
 			else if (tag == "fine")
 			{
@@ -465,6 +474,7 @@ int main(int argc, char** argv)
 		std::cout << "Bristle coefficient: " << prop.bristles << " Sub-pixel: " << prop.sub_pixel << " Bristle thinness factor: " << prop.bristle_thin_factor << "\n";
 		std::cout << "Flow: " << prop.flow << " Flow variation: " << prop.flow_variation << "\n";
 		std::cout << "Background color: ";
+
 		if (0 == prop.background)
 		{
 			std::cout << "white ";
@@ -498,6 +508,36 @@ int main(int argc, char** argv)
 		}
 		std::cout << "Radius variation: " << prop.radius_variation << "\n";
 		std::cout << "Seeds out: " << seeds_out << " Seeds in: " << seeds_in << "\n";
+		if (show_grays || show_edges)
+		{
+			file_output = 1;
+		}
+		std::cout << "File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint\n";
+		std::cout << "Outputs:\n";
+		if (1 == (file_output & 1))
+		{
+			std::cout << "gray, edge, skeleton, paint path\n";
+		}
+		if (2 == (file_output & 2))
+		{
+			std::cout << "base PNG\n";
+		}
+		if (4 == (file_output & 4))
+		{
+			std::cout << "base SVG\n";
+		}
+		if (8 == (file_output & 8))
+		{
+			std::cout << "post PNG\n";
+		}
+		if (16 == (file_output & 16))
+		{
+			std::cout << "post SVG\n";
+		}
+		if (32 == (file_output & 32))
+		{
+			std::cout << "paint\n";
+		}
 
 		if ("" != inpath)
 		{
@@ -687,30 +727,28 @@ int main(int argc, char** argv)
 					throw std::runtime_error("Error reducing color palette.\n");
 				}
 				palette = 0; // Avoid re-creating palette later.
+				std::cout << ".";
 			}
-			std::cout << ".";
 			workspace->FindPaths(0, polygon, fine);
-			std::cout << ".";
-			temppath = path;
-			temppath.append("SuperPixels.svg");
-			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
-			std::cout << ".";
-			//if (false == workspace->SetAveColors())  // *** Is this needed?  If not, then storing basic information in data file means we won't need to load the original image.
-			//{
-			//	throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
-			//}
-			for (int ri = 0; ri < 3; ri++)
+			if (4 == (file_output & 4))
 			{
-				std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
-				if (false == workspace->CombineSuperPixels(colorsimilarity))
-				{
-					throw std::runtime_error("Error combining SuperPixels.\n");
-				}
+				std::cout << ".";
+				temppath = path;
+				temppath.append("SuperPixels.svg");
+				workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
+				std::cout << ".";
+			}
 
-				//if (false == workspace->SetAveColors())
-				//{
-				//	throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
-				//}
+			if (colorsimilarity > 0)
+			{
+				for (int ri = 0; ri < 3; ri++)
+				{
+					std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
+					if (false == workspace->CombineSuperPixels(colorsimilarity))
+					{
+						throw std::runtime_error("Error combining SuperPixels.\n");
+					}
+				}
 			}
 			if (postproc_windowsize > 0)
 			{
@@ -723,49 +761,71 @@ int main(int argc, char** argv)
 				std::cout << ".";
 			}
 			std::cout << "\nWriting output files ";
-
-			workspace->FindPaths(0, polygon, fine);
-			std::cout << ".";
-			temppath = path;
-			temppath.append("SuperPixels_b.svg");
-			workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
-			std::cout << ".";
-			ImageData* data_revised = workspace->GenerateImage(0, prop);
-			temppath = path;
-			temppath.append(OUTPUT);
-			data_revised->write_file(temppath);
-			std::cout << ".";
-			delete data_revised;
-			workspace->ThinSuperPixels(prop.glitch3);
-			data_revised = workspace->GenerateImage(2, prop);
-			temppath = path;
-			temppath.append(OUTPUT).append("_skeleton");
-			data_revised->write_file(temppath);
-			std::cout << ".";
-			delete data_revised;
-			data_revised = workspace->GenerateImage(3, prop);
-			temppath = path;
-			temppath.append(OUTPUT).append("_paint");
-			data_revised->write_file(temppath);
-			std::cout << ".";
-			delete data_revised;
-			temppath = path;
-			temppath.append("SuperPixels_Paint_Paths.svg");
-			workspace->WritePaintCurvesSVG(temppath);
-			std::cout << ".";
-			if (postproc_windowsize > 0)
+			if ((4 == (file_output & 4)) && (colorsimilarity > 0))
 			{
-				//workspace->FindPaths(1, polygon, fine);
-				temppath = path;
-				temppath.append("SuperPixels_Post.svg");
-				workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
+				workspace->FindPaths(0, polygon, fine);
 				std::cout << ".";
-				data_revised = workspace->GenerateImage(1, prop);
 				temppath = path;
-				temppath.append(OUTPUT).append("_post");
+				temppath.append("SuperPixels_b.svg");
+				workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
+				std::cout << ".";
+			}
+			if (2 == (file_output & 2))
+			{
+				data_revised = workspace->GenerateImage(0, prop);
+				temppath = path;
+				temppath.append(OUTPUT);
 				data_revised->write_file(temppath);
 				std::cout << ".";
 				delete data_revised;
+			}
+			if ((1 == (file_output & 1)) || (32 == (file_output & 32)))
+			{
+				workspace->ThinSuperPixels(prop.glitch3);
+				if (1 == (file_output & 1))
+				{
+					data_revised = workspace->GenerateImage(2, prop);
+					temppath = path;
+					temppath.append(OUTPUT).append("_skeleton");
+					data_revised->write_file(temppath);
+					std::cout << ".";
+					delete data_revised;
+				}
+			}
+			if (32 == (file_output & 32))
+			{
+				data_revised = workspace->GenerateImage(3, prop);
+				temppath = path;
+				temppath.append(OUTPUT).append("_paint");
+				data_revised->write_file(temppath);
+				std::cout << ".";
+				delete data_revised;
+			}
+			if (1 == (file_output & 1))
+			{
+				temppath = path;
+				temppath.append("SuperPixels_Paint_Paths.svg");
+				workspace->WritePaintCurvesSVG(temppath);
+				std::cout << ".";
+			}
+			if (postproc_windowsize > 0)
+			{
+				if (16 == (file_output & 16))
+				{
+					temppath = path;
+					temppath.append("SuperPixels_Post.svg");
+					workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
+					std::cout << ".";
+				}
+				if (8 == (file_output & 8))
+				{
+					data_revised = workspace->GenerateImage(1, prop);
+					temppath = path;
+					temppath.append(OUTPUT).append("_post");
+					data_revised->write_file(temppath);
+					std::cout << ".";
+					delete data_revised;
+				}
 			}
 			std::cout << "\nDone.\n";
 		}
@@ -778,12 +838,15 @@ int main(int argc, char** argv)
 				throw std::runtime_error("Failed to create Workspace.\n");
 			}
 			std::cout << ".";
-			ImageData* gray_image = workspace->Gradient2Image(4);
-			temppath = path;
-			temppath.append(OUTPUT).append("_gray");
-			gray_image->write_file(temppath);
-			delete gray_image;
-			std::cout << ".";
+			if (1 == (file_output & 1))
+			{
+				ImageData* gray_image = workspace->Gradient2Image(4);
+				temppath = path;
+				temppath.append(OUTPUT).append("_gray");
+				gray_image->write_file(temppath);
+				delete gray_image;
+				std::cout << ".";
+			}
 			int steps;
 			int modes = 0;
 
@@ -807,27 +870,15 @@ int main(int argc, char** argv)
 			std::cout << ".";
 			workspace->Generate_Gradient(1, gradthickness, xdiv, ydiv, k);
 			std::cout << ".";
-			ImageData* gradient_image = workspace->Gradient2Image(0);
-			temppath = path;
-			temppath.append(OUTPUT).append("_edge");
-			gradient_image->write_file(temppath);
-			delete gradient_image;
-			std::cout << ".";
-			//gradient_image = workspace->Gradient2Image(1);
-			//temppath = path;
-			//temppath.append(OUTPUT).append("_erode");
-			//gradient_image->write_file(temppath);
-			//delete gradient_image;
-			//gradient_image = workspace->Gradient2Image(2);
-			//temppath = path;
-			//temppath.append(OUTPUT).append("_dilate");
-			//gradient_image->write_file(temppath);
-			//delete gradient_image;
-			//gradient_image = workspace->Gradient2Image(3);
-			//temppath = path;
-			//temppath.append(OUTPUT).append("_processed_gray");
-			//gradient_image->write_file(temppath);
-			//delete gradient_image;
+			if (1 == (file_output & 1))
+			{
+				ImageData* gradient_image = workspace->Gradient2Image(0);
+				temppath = path;
+				temppath.append(OUTPUT).append("_edge");
+				gradient_image->write_file(temppath);
+				delete gradient_image;
+				std::cout << ".";
+			}
 
 			if ("" != seeds_in)
 			{
@@ -878,13 +929,22 @@ int main(int argc, char** argv)
 						workspace->WriteSuperPixels(temppath);
 						std::cout << ".";
 					}
-					for (int ri = 0; ri < 3; ri++)
+					if (colorsimilarity > 0)
 					{
-						std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
-						if (false == workspace->CombineSuperPixels(colorsimilarity))
+						for (int ri = 0; ri < 3; ri++)
 						{
-							throw std::runtime_error("Error combining SuperPixels.\n");
+							std::cout << "\nStarting Absorb run " << (ri + 1) << " ";
+							if (false == workspace->CombineSuperPixels(colorsimilarity))
+							{
+								throw std::runtime_error("Error combining SuperPixels.\n");
+							}
+							if (false == workspace->SetAveColors())
+							{
+								throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
+							}
 						}
+					}
+					else {
 						if (false == workspace->SetAveColors())
 						{
 							throw std::runtime_error("Error setting average colors for the SuperPixels.\n");
@@ -902,14 +962,16 @@ int main(int argc, char** argv)
 					}
 				}
 
-
-				// Paint each pixel in each SuperPixel to the average color.
-				ImageData* data_revised = workspace->GenerateImage(0, prop);
-				temppath = path;
-				temppath.append(OUTPUT);
-				data_revised->write_file(temppath);
-				delete data_revised;
-				std::cout << ".";
+				if (2 == (file_output & 2))
+				{
+					// Paint each pixel in each SuperPixel to the average color.
+					data_revised = workspace->GenerateImage(0, prop);
+					temppath = path;
+					temppath.append(OUTPUT);
+					data_revised->write_file(temppath);
+					delete data_revised;
+					std::cout << ".";
+				}
 				if (0 == repeat)
 				{
 					std::cout << "\nWriting output files ";
@@ -920,42 +982,63 @@ int main(int argc, char** argv)
 						workspace->WriteSeeds(temppath);
 						std::cout << ".";
 					}
-					workspace->ThinSuperPixels(prop.glitch3);
-					data_revised = workspace->GenerateImage(2, prop);
-					temppath = path;
-					temppath.append(OUTPUT).append("_skeleton");
-					data_revised->write_file(temppath);
-					delete data_revised;
-					std::cout << ".";
-					data_revised = workspace->GenerateImage(3, prop);
-					temppath = path;
-					temppath.append(OUTPUT).append("_paint");
-					data_revised->write_file(temppath);
-					delete data_revised;
-					std::cout << ".";
-					temppath = path;
-					temppath.append("SuperPixels_Paint_Paths.svg");
-					workspace->WritePaintCurvesSVG(temppath);
-					std::cout << ".";
-					if (postproc_windowsize > 0)
+					if ((1 == (file_output & 1)) || (32 == (file_output & 32)))
+					{
+						workspace->ThinSuperPixels(prop.glitch3);
+						if (1 == (file_output & 1))
+						{
+							data_revised = workspace->GenerateImage(2, prop);
+							temppath = path;
+							temppath.append(OUTPUT).append("_skeleton");
+							data_revised->write_file(temppath);
+							delete data_revised;
+							std::cout << ".";
+						}
+					}
+					if (32 == (file_output & 32))
+					{
+						data_revised = workspace->GenerateImage(3, prop);
+						temppath = path;
+						temppath.append(OUTPUT).append("_paint");
+						data_revised->write_file(temppath);
+						delete data_revised;
+						std::cout << ".";
+					}
+					if (1 == (file_output & 1))
 					{
 						temppath = path;
-						temppath.append("SuperPixels_Post.svg");
-						workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
+						temppath.append("SuperPixels_Paint_Paths.svg");
+						workspace->WritePaintCurvesSVG(temppath);
 						std::cout << ".";
-						data_revised = workspace->GenerateImage(1, prop);
-						temppath = path;
-						temppath.append(OUTPUT).append("_post");
-						data_revised->write_file(temppath);
-						std::cout << ".";
-						delete data_revised;
 					}
-					workspace->FindPaths(0, polygon, fine);
-					std::cout << ".";
-					temppath = path;
-					temppath.append("SuperPixels.svg");
-					workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
-					std::cout << ".";
+					if (postproc_windowsize > 0)
+					{
+						if (16 == (file_output & 16))
+						{
+							temppath = path;
+							temppath.append("SuperPixels_Post.svg");
+							workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
+							std::cout << ".";
+						}
+						if (8 == (file_output & 8))
+						{
+							data_revised = workspace->GenerateImage(1, prop);
+							temppath = path;
+							temppath.append(OUTPUT).append("_post");
+							data_revised->write_file(temppath);
+							std::cout << ".";
+							delete data_revised;
+						}
+					}
+					if (4 == (file_output & 4))
+					{
+						workspace->FindPaths(0, polygon, fine);
+						std::cout << ".";
+						temppath = path;
+						temppath.append("SuperPixels.svg");
+						workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
+						std::cout << ".";
+					}
 				}
 
 				if (repeat > 0)

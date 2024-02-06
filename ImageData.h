@@ -25,7 +25,7 @@ public:
 	ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values=false);
 	~ImageData();
 	Color GetPixel(int x, int y);
-	bool CollapseWideData();
+	bool CollapseWideData(bool dither = false);
 	bool CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop);
 	bool PaintCurve(std::vector<Corner> curve, SPixelData* mask = NULL, int mask_value = 0);
 	unsigned char* GetData();
