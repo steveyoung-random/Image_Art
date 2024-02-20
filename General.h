@@ -5,7 +5,7 @@
 
 #define EFFECTIVE_ZERO 0.001
 #define CURVE_ADJUSTMENT 4
-#define MAX_CURVE_FACTOR 80
+#define MAX_CURVE_FACTOR 350
 #define OUTLINE false
 #define BACKGROUND 0
 #define GLITCH1 false

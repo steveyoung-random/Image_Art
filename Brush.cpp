@@ -415,9 +415,9 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	int iterations;
 	FloatPointPair current_location;
 	p1 = location;
-	if ((p1.x == p2.x) && (p1.y == p2.y))
+	if ((p1.x == p2.x) && (p1.y == p2.y)) 
 	{
-		Dab3(o2, data, width, height, mask, mask_value, r1, 1.0, begin); // *** Maybe consider just skipping here.
+		Dab3(o2, data, width, height, mask, mask_value, r1, begin);
 		return true;
 	}
 	float dx, dy;
@@ -427,7 +427,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	float factor;
 	if (r2 > r1)
 	{
-		factor = 1.0 + r2 * abs(tan(abs(delta_orientation))) / dist;  // *** Check for this going to infinity (or just very large).  Use MAX_CURVE_FACTOR for now.
+		factor = 1.0 + r2 * abs(tan(abs(delta_orientation))) / dist;
 	}
 	else {
 		factor = 1.0 + r1 * abs(tan(abs(delta_orientation))) / dist;
@@ -477,7 +477,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 
 	direction.x = cos(orient1);
 	direction.y = sin(orient1);
-	Dab3(direction, data, width, height, mask, mask_value, r1, 1.0, begin);  // *** No longer need flow_adjustment?
+	Dab3(direction, data, width, height, mask, mask_value, r1, begin);
 	for (int i = 0; i < iterations; ++i)
 	{
 		if (steep)
@@ -503,7 +503,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 		direction.y = sin(orient1);
 		MoveTo(current_location);
 		SetOrientation(orient1);
-		Dab3(direction, data, width, height, mask, mask_value, r1, 1.0, false);
+		Dab3(direction, data, width, height, mask, mask_value, r1, false);
 	}
 	MoveTo(p2);
 	SetOrientation(orient2);
@@ -738,18 +738,19 @@ bool Brush::Dab2(float* data, int width, int height, SPixelData* mask, int mask_
 	return true;
 }
 
-bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, float flow_adjustment, bool begin)
+bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, bool begin)
 {
 	// Use direction to measure whether the movement has been forward.
 
-	// Need to normalize direction? *** Maybe not.
-	float dir_dist = sqrt(direction.x * direction.x + direction.y * direction.y);
-	bool pos_dir = dir_dist > EFFECTIVE_ZERO;
-	if (pos_dir)
-	{
-		direction.x = direction.x / dir_dist;
-		direction.y = direction.y / dir_dist;
-	}
+	// Need to normalize direction?  Should not need, so these lines removed.
+	//float dir_dist = sqrt(direction.x * direction.x + direction.y * direction.y);
+	//bool pos_dir = dir_dist > EFFECTIVE_ZERO;
+	//if (pos_dir)
+	//{
+	//	direction.x = direction.x / dir_dist;
+	//	direction.y = direction.y / dir_dist;
+	//}
+
 	float scaled_spot_radius_squared = spot_radius * spot_radius * paint_prop.paint_scale * paint_prop.paint_scale;
 	bool new_stroke = false;
 
@@ -757,8 +758,8 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 	std::mt19937 gen(rd());
 
 	std::uniform_real_distribution<> Adjust(0, 1);
-	std::uniform_int_distribution<> Adjust_x(-1, 1);  // *** Consider reducing the wander limits.  And maybe not a uniform distribution.
-	std::uniform_int_distribution<> Adjust_y(-1, 1);
+	std::uniform_real_distribution<> Adjust_x(-1.0, 1.0);
+	std::uniform_real_distribution<> Adjust_y(-1.0, 1.0);
 
 	Bristle* bristle;
 	FloatPointPair oriented_location;  // Location of bristle based on bristle offset and orientation of brush (location relative to brush center).
@@ -843,10 +844,10 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 					y = bristle_location.y + j;
 					if (paint_prop.sub_pixel)
 					{
-						adjustment = flow_adjustment * KernelAdjustment(i, j, x, y);
+						adjustment = KernelAdjustment(i, j, x, y);
 					}
 					else {
-						adjustment = flow_adjustment * bristle_kernel[abs(i)][abs(j)];
+						adjustment = bristle_kernel[abs(i)][abs(j)];
 					}
 
 					float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;

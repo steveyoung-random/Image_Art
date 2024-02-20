@@ -53,7 +53,7 @@ public:
 
 	bool Dab(unsigned char* data, int width, int height);
 	bool Dab2(float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, float flow_adjustment = 1.0);
-	bool Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, float flow_adjustment = 1.0, bool begin=false);
+	bool Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, bool begin=false);
 	bool MoveTo(FloatPointPair loc);
 	bool PaintTo(FloatPointPair loc, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float rad1 = -1, float rad2 = -1);
 	bool PaintTo2(FloatPointPair loc2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float rad1 = -1, float rad2 = -1, bool begin=false);

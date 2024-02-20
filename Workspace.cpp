@@ -1920,6 +1920,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				ave_radius = local_pixdata->CalculateRadius(curve.begin(), curve.end(), current->GetIdentifier());
 				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop);
 				img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
+				//img->PaintCurve(curve, NULL, 0);
 				if (prop.mix_paints)
 				{
 					second = current->GetAveColor();

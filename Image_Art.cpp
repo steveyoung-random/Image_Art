@@ -134,6 +134,10 @@ int main(int argc, char** argv)
 			{
 				prop.bristles = atoi(value.c_str());
 			}
+			else if ((tag == "brush_width") || (tag == "bw"))
+			{
+				prop.brush_width = atoi(value.c_str());
+			}
 			else if ((tag == "c") || (tag == "channel"))
 			{
 				channel = atoi(value.c_str());
@@ -425,6 +429,16 @@ int main(int argc, char** argv)
 			{
 				preproc_windowsize = atoi(value.c_str());
 			}
+			else if ((tag == "width_override") || (tag == "wo"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					prop.brush_width_override = true;
+				}
+				else {
+					prop.brush_width_override = false;
+				}
+			}
 			else if ((tag == "x") || (tag == "xdiv"))
 			{
 				xdiv = atoi(value.c_str());
@@ -472,6 +486,7 @@ int main(int argc, char** argv)
 		std::cout << "Palette size: " << palette << " Early palette reduction: " << early_palette << " Mix paints: " << prop.mix_paints << "\n";
 		std::cout << "Paint scale: " << prop.paint_scale << "\n";
 		std::cout << "Bristle coefficient: " << prop.bristles << " Sub-pixel: " << prop.sub_pixel << " Bristle thinness factor: " << prop.bristle_thin_factor << "\n";
+		std::cout << "Brush width: " << prop.brush_width << " Radius variation: " << prop.radius_variation << " Brush width override: " << prop.brush_width_override << "\n";
 		std::cout << "Flow: " << prop.flow << " Flow variation: " << prop.flow_variation << "\n";
 		std::cout << "Background color: ";
 
@@ -506,7 +521,6 @@ int main(int argc, char** argv)
 		else {
 			std::cout << "true\n";
 		}
-		std::cout << "Radius variation: " << prop.radius_variation << "\n";
 		std::cout << "Seeds out: " << seeds_out << " Seeds in: " << seeds_in << "\n";
 		if (show_grays || show_edges)
 		{
@@ -761,14 +775,17 @@ int main(int argc, char** argv)
 				std::cout << ".";
 			}
 			std::cout << "\nWriting output files ";
-			if ((4 == (file_output & 4)) && (colorsimilarity > 0))
+			if (colorsimilarity > 0)
 			{
 				workspace->FindPaths(0, polygon, fine);
 				std::cout << ".";
-				temppath = path;
-				temppath.append("SuperPixels_b.svg");
-				workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
-				std::cout << ".";
+				if (4 == (file_output & 4))
+				{
+					temppath = path;
+					temppath.append("SuperPixels_b.svg");
+					workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
+					std::cout << ".";
+				}
 			}
 			if (2 == (file_output & 2))
 			{
@@ -889,15 +906,6 @@ int main(int argc, char** argv)
 			else {
 				workspace->InitialSuperPixels();
 			}
-			if (early_palette)
-			{
-				if (false == workspace->ReduceToPalette(0, palette))
-				{
-					throw std::runtime_error("Error reducing color palette.\n");
-				}
-				palette = 0; // Avoid re-creating palette.
-				std::cout << ".";
-			}
 
 			if (seeds_out)
 			{
@@ -995,6 +1003,16 @@ int main(int argc, char** argv)
 							std::cout << ".";
 						}
 					}
+					if (early_palette)
+					{
+						if (false == workspace->ReduceToPalette(0, palette))
+						{
+							throw std::runtime_error("Error reducing color palette.\n");
+						}
+						palette = 0; // Avoid re-creating palette.
+						std::cout << ".";
+					}
+					workspace->FindPaths(0, polygon, fine);
 					if (32 == (file_output & 32))
 					{
 						data_revised = workspace->GenerateImage(3, prop);

@@ -100,9 +100,24 @@ bool SkeletonPointCollection::FindSkeletonPoints()
 			}
 		}
 	}
-	if ((GetIntersections().size() > 1) && (GetEndpoints().size() == 0))
+	if ((GetIntersections().size() == 0) && (GetEndpoints().size() == 0))
 	{
-		std::cout << "No endpoints: " << skeleton_superpixel->GetIdentifier() << "\n";
+		// If there are not intersections, add one.
+		bool cont = true;
+		for (j = boundingbox.y0; (j <= boundingbox.y1) && cont; j++)
+		{
+			for (i = boundingbox.x0; (i <= boundingbox.x1) && cont; i++)
+			{
+				if (identifier == pixdata->GetPixel(i, j))
+				{
+					p.x = i;
+					p.y = j;
+					AddSkeletonIntersection(p);
+					cont = false;
+				}
+			}
+		}
+
 	}
 	return true;
 }
@@ -543,203 +558,215 @@ bool SkeletonPointCollection::FindLongestPath()
 
 	if (1 == skeleton_point_set.size())
 	{
-		longest_path.clear();
-		local_point = skeleton_point_set.begin()->point;
-		longest_path.push_back(local_point);
-		longest_paths.clear();
-		longest_paths.insert(longest_path);
-	}
-	else {
-		while (false == done)
+		bool has_link = false;
+		for (int i = 0; (i < 8)&&(!has_link); ++i)
 		{
-			long_path_dist = 0.0;
-			long_path.clear();
-
-			for (point_it = skeleton_point_set.begin(); point_it != skeleton_point_set.end(); ++point_it)
+			point_it = skeleton_point_set.begin();
+			if (NULL != point_it->sp->dir[i])
 			{
-				// First part is to popluate all temp_dist values with shortest distances from point_it->sp.
-				ResetTempDists();  // Set all temp_dist values to -1 (so we know they have not been visted yet).
-				sp = point_it->sp;
-				sp->temp_dist = 0.0;
+				has_link = true;
+			}
+		}
+		if (!has_link) // Only one point, no links to it.
+		{
+			longest_path.clear();
+			local_point = skeleton_point_set.begin()->point;
+			longest_path.push_back(local_point);
+			longest_paths.clear();
+			longest_paths.insert(longest_path);
+			return true;
+		}
+	}
+
+	while (false == done)
+	{
+		long_path_dist = 0.0;
+		long_path.clear();
+
+		for (point_it = skeleton_point_set.begin(); point_it != skeleton_point_set.end(); ++point_it)
+		{
+			// First part is to popluate all temp_dist values with shortest distances from point_it->sp.
+			ResetTempDists();  // Set all temp_dist values to -1 (so we know they have not been visted yet).
+			sp = point_it->sp;
+			sp->temp_dist = 0.0;
+			leads.clear();
+			new_leads.clear();
+			new_leads.push_back(sp->point);
+
+			while (new_leads.size() > 0)  // Keep looping through until no more leads are being added.
+			{
 				leads.clear();
+				leads.insert(new_leads.begin(), new_leads.end());
 				new_leads.clear();
-				new_leads.push_back(sp->point);
-
-				while (new_leads.size() > 0)  // Keep looping through until no more leads are being added.
+				for (leads_it = leads.begin(); leads_it != leads.end(); ++leads_it)
 				{
-					leads.clear();
-					leads.insert(new_leads.begin(), new_leads.end());
-					new_leads.clear();
-					for (leads_it = leads.begin(); leads_it != leads.end(); ++leads_it)
+					local_point = *leads_it;
+					local_lead = GetSPByIdentifier(local_point);
+					for (int i = 0; i < 8; ++i)
 					{
-						local_point = *leads_it;
-						local_lead = GetSPByIdentifier(local_point);
-						for (int i = 0; i < 8; ++i)
+						local_link = local_lead->dir[i];
+						if ((NULL != local_link) && (false == local_link->used_in_long_path))
 						{
-							local_link = local_lead->dir[i];
-							if ((NULL != local_link) && (false == local_link->used_in_long_path))
+							if (local_link->end1 == local_point)
 							{
-								if (local_link->end1 == local_point)
-								{
-									other_end = GetSPByIdentifier(local_link->end2);
-								}
-								else {
-									other_end = GetSPByIdentifier(local_link->end1);
-								}
-								if (other_end->temp_dist < 0)
-								{
-									other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-									new_leads.push_back(other_end->point);
-								}
-								else if ((local_lead->temp_dist + local_link->distance) < other_end->temp_dist)
-								{
-									other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-									new_leads.push_back(other_end->point);
-								}
+								other_end = GetSPByIdentifier(local_link->end2);
+							}
+							else {
+								other_end = GetSPByIdentifier(local_link->end1);
+							}
+							if (other_end->temp_dist < 0)
+							{
+								other_end->temp_dist = local_lead->temp_dist + local_link->distance;
+								new_leads.push_back(other_end->point);
+							}
+							else if ((local_lead->temp_dist + local_link->distance) < other_end->temp_dist)
+							{
+								other_end->temp_dist = local_lead->temp_dist + local_link->distance;
+								new_leads.push_back(other_end->point);
 							}
 						}
-					}
-				}
-				// Now go through all points to find the one with the longest distance.
-				float local_distance = 0.0;
-				int local_end = sp->point;
-				for (far_point_it = skeleton_point_set.begin(); far_point_it != skeleton_point_set.end(); ++far_point_it)
-				{
-					far_sp = far_point_it->sp;
-					if (far_sp->temp_dist > local_distance)
-					{
-						local_distance = far_sp->temp_dist;
-						local_end = far_sp->point;
-					}
-				}
-				far_sp = GetSPByIdentifier(local_end);
-
-				if (local_distance > long_path_dist)  // No need to work out the exact path unless this is longer than others seen so far.
-				{
-					// far_sp will move from the ultimate terminal point to the beginning point.
-					// local_end is the position of far_sp.
-					// sp is the beginning point of the path (which is arrived at last, since we are backtracking from far_sp).
-					// local_lead is the next point along the path backtracking towards sp.
-					// local_lead_pos is the position of local_lead.
-
-					int local_lead_pos;
-					long_path.clear();
-					link_path.clear();  // Reset link_path.
-					long_path.push_back(local_end);
-					long_path_dist = local_distance;
-					while (local_end != sp->point)
-					{
-						int i = FindDirSmallestTempDist(far_sp);
-						if (i < 0)
-						{
-							throw std::runtime_error("Error backtracking longest path for skeleton.\n");
-							return false;
-						}
-						bool reverse = false;  // True if tracing back requires going through line from reverse order.
-						link_path.insert(far_sp->dir[i]);  // Add link to the link_path.
-						if (far_sp->dir[i]->end1 == local_end)  // Need to look to end2.
-						{
-							local_lead_pos = far_sp->dir[i]->end2;
-						}
-						else { // Need to look to end1.
-							local_lead_pos = far_sp->dir[i]->end1;
-							reverse = true;
-						}
-						local_lead = GetSPByIdentifier(local_lead_pos);
-						int line_index = 1;  // Not zero because the point at location zero (or size-1 if reverse is true) is already in long_path.
-						int line_size = far_sp->dir[i]->line.size();
-						if (line_size > 2)
-						{
-							if (reverse)
-							{
-								line_index = line_size - 2;
-							}
-							while (long_path[0] != local_lead_pos)
-							{
-								long_path.insert(long_path.begin(), far_sp->dir[i]->line[line_index]);
-								if (reverse)
-								{
-									line_index--;
-								}
-								else {
-									line_index++;
-								}
-								if ((line_index > line_size) || (line_index < -1))
-								{
-									throw std::runtime_error("Failed to find next point in skeleton line segment.\n");
-									return false;
-								}
-							}
-						}
-						else {
-							long_path.insert(long_path.begin(), local_lead_pos);
-						}
-						local_distance = local_lead->temp_dist;
-						local_end = local_lead_pos;
-						far_sp = GetSPByIdentifier(local_end);
 					}
 				}
 			}
-			if (first || (long_path_dist > 5.0))
+			// Now go through all points to find the one with the longest distance.
+			float local_distance = 0.0;
+			int local_end = sp->point;
+			for (far_point_it = skeleton_point_set.begin(); far_point_it != skeleton_point_set.end(); ++far_point_it)
 			{
-				if (first)
+				far_sp = far_point_it->sp;
+				if (far_sp->temp_dist > local_distance)
 				{
-					longest = long_path_dist;
-					longest_path = long_path;
-					first = false;
+					local_distance = far_sp->temp_dist;
+					local_end = far_sp->point;
 				}
-				longest_paths.insert(long_path);
-				int prev = 0;
-				for (std::vector<int>::iterator it = long_path.begin(); it != long_path.end(); ++it)
+			}
+			far_sp = GetSPByIdentifier(local_end);
+
+			if (local_distance > long_path_dist)  // No need to work out the exact path unless this is longer than others seen so far.
+			{
+				// far_sp will move from the ultimate terminal point to the beginning point.
+				// local_end is the position of far_sp.
+				// sp is the beginning point of the path (which is arrived at last, since we are backtracking from far_sp).
+				// local_lead is the next point along the path backtracking towards sp.
+				// local_lead_pos is the position of local_lead.
+
+				int local_lead_pos;
+				long_path.clear();
+				link_path.clear();  // Reset link_path.
+				long_path.push_back(local_end);
+				long_path_dist = local_distance;
+				while (local_end != sp->point)
 				{
-					if (long_path.begin() == it)
+					int i = FindDirSmallestTempDist(far_sp);
+					if (i < 0)
 					{
-						prev = *it;
+						throw std::runtime_error("Error backtracking longest path for skeleton.\n");
+						return false;
+					}
+					bool reverse = false;  // True if tracing back requires going through line from reverse order.
+					link_path.insert(far_sp->dir[i]);  // Add link to the link_path.
+					if (far_sp->dir[i]->end1 == local_end)  // Need to look to end2.
+					{
+						local_lead_pos = far_sp->dir[i]->end2;
+					}
+					else { // Need to look to end1.
+						local_lead_pos = far_sp->dir[i]->end1;
+						reverse = true;
+					}
+					local_lead = GetSPByIdentifier(local_lead_pos);
+					int line_index = 1;  // Not zero because the point at location zero (or size-1 if reverse is true) is already in long_path.
+					int line_size = far_sp->dir[i]->line.size();
+					if (line_size > 2)
+					{
+						if (reverse)
+						{
+							line_index = line_size - 2;
+						}
+						while (long_path[0] != local_lead_pos)
+						{
+							long_path.insert(long_path.begin(), far_sp->dir[i]->line[line_index]);
+							if (reverse)
+							{
+								line_index--;
+							}
+							else {
+								line_index++;
+							}
+							if ((line_index > line_size) || (line_index < -1))
+							{
+								throw std::runtime_error("Failed to find next point in skeleton line segment.\n");
+								return false;
+							}
+						}
 					}
 					else {
-						sp = GetSPByIdentifier(*it);
-						if (NULL != sp)
+						long_path.insert(long_path.begin(), local_lead_pos);
+					}
+					local_distance = local_lead->temp_dist;
+					local_end = local_lead_pos;
+					far_sp = GetSPByIdentifier(local_end);
+				}
+			}
+		}
+		if (first || (long_path_dist > 5.0))
+		{
+			if (first)
+			{
+				longest = long_path_dist;
+				longest_path = long_path;
+				first = false;
+			}
+			longest_paths.insert(long_path);
+			int prev = 0;
+			for (std::vector<int>::iterator it = long_path.begin(); it != long_path.end(); ++it)
+			{
+				if (long_path.begin() == it)
+				{
+					prev = *it;
+				}
+				else {
+					sp = GetSPByIdentifier(*it);
+					if (NULL != sp)
+					{
+						for (int i = 0; i < 8; ++i)
 						{
-							for (int i = 0; i < 8; ++i)
+							if ((NULL != sp->dir[i]) && (false == sp->dir[i]->used_in_long_path))
 							{
-								if ((NULL != sp->dir[i]) && (false == sp->dir[i]->used_in_long_path))
+								if (((sp->dir[i]->end1 == prev) && (sp->dir[i]->end2 == *it)) ||
+									((sp->dir[i]->end2 == prev) && (sp->dir[i]->end1 == *it)))
 								{
-									if (((sp->dir[i]->end1 == prev) && (sp->dir[i]->end2 == *it)) ||
-										((sp->dir[i]->end2 == prev) && (sp->dir[i]->end1 == *it)))
+									std::set<Skeleton_Link*>::iterator find_it;
+									find_it = link_path.find(sp->dir[i]);
+									if (find_it != link_path.end())
 									{
-										std::set<Skeleton_Link*>::iterator find_it;
-										find_it = link_path.find(sp->dir[i]);
-										if (find_it != link_path.end())
-										{
-											sp->dir[i]->used_in_long_path = true;
-										}
+										sp->dir[i]->used_in_long_path = true;
 									}
 								}
 							}
-							prev = *it;
 						}
+						prev = *it;
 					}
 				}
 			}
-			else {
-				done = true;
-				// Still need to pick up orphaned links (which may be pointing to the same point on both ends.
-				for (point_it = skeleton_point_set.begin(); point_it != skeleton_point_set.end(); ++point_it)
+		}
+		else {
+			done = true;
+			// Still need to pick up orphaned links (which may be pointing to the same point on both ends.
+			for (point_it = skeleton_point_set.begin(); point_it != skeleton_point_set.end(); ++point_it)
+			{
+				sp = point_it->sp;
+				for (int i = 0; i < 8; ++i)
 				{
-					sp = point_it->sp;
-					for (int i = 0; i < 8; ++i)
+					local_link = sp->dir[i];
+					if ((NULL != local_link) && (false == local_link->used_in_long_path) && (local_link->distance > 5.0))
 					{
-						local_link = sp->dir[i];
-						if ((NULL != local_link) && (false == local_link->used_in_long_path) && (local_link->distance > 5.0))
+						long_path.clear();
+						for (std::vector<int>::iterator it = local_link->line.begin(); it != local_link->line.end(); ++it)
 						{
-							long_path.clear();
-							for (std::vector<int>::iterator it = local_link->line.begin(); it != local_link->line.end(); ++it)
-							{
-								long_path.push_back(*it);
-							}
-							longest_paths.insert(long_path);
-							local_link->used_in_long_path = true;
+							long_path.push_back(*it);
 						}
+						longest_paths.insert(long_path);
+						local_link->used_in_long_path = true;
 					}
 				}
 			}
