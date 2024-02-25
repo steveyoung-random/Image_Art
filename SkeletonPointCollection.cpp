@@ -521,11 +521,6 @@ bool SkeletonPointCollection::FindSkeletonLinks()
 				}
 			}
 		}
-
-		// *** Need to fix?: ***
-		// A circle with no intersection or endpoint.
-		// A line that leads to an intersection point, but where the link may follow a separate link from the intersection point first.
-
 	}
 	return true;
 }

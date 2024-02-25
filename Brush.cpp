@@ -388,7 +388,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	}
 	if (paint_prop.glitch1)
 	{
-		curve_adjustment = paint_prop.paint_scale;  // *** Need to fix to reinstate glitch.
+		curve_adjustment = paint_prop.paint_scale / 4.0;
 	}
 
 
@@ -415,7 +415,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	int iterations;
 	FloatPointPair current_location;
 	p1 = location;
-	if ((p1.x == p2.x) && (p1.y == p2.y)) 
+	if ((p1.x == p2.x) && (p1.y == p2.y))
 	{
 		Dab3(o2, data, width, height, mask, mask_value, r1, begin);
 		return true;
