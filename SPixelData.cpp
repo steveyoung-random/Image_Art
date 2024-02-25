@@ -40,17 +40,16 @@ SPixelData::~SPixelData()
 	}
 	meeting_points.clear();
 }
+
 int SPixelData::GetPixel(int x, int y)
 {
 	if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
 	{
 		return data[y * width + x];
 	}
-	else {
-		throw (std::runtime_error("Attempt to get pixel data from outside the boundaries.\n"));
-		return 0;
-	}
+	return 0;
 }
+
 bool SPixelData::GetMeetingPoint(PointPair point)
 {
 	if (meeting_points.count(point.y * width + point.x) > 0)
@@ -59,6 +58,7 @@ bool SPixelData::GetMeetingPoint(PointPair point)
 	}
 	return false;
 }
+
 int SPixelData::GetNeighbors(int identifier, PointPair point)
 {
 	int ret = 0;
@@ -548,19 +548,16 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 			int wx;
 			int wy;
 			// Calculate histogram for first pixel (bbox.x0,bbox.y0).
-			for (wy = bbox.y0 - windowsize; wy <= (bbox.y0 + windowsize); wy++)  // *** Check this.  Maybe treat all region before as 0 (has an effect for erode).
+			for (wy = bbox.y0 - windowsize; wy <= (bbox.y0 + windowsize); wy++)
 			{
 				for (wx = bbox.x0 - windowsize; wx <= (bbox.x0 + windowsize); wx++)
 				{
-					if ((wx >= 0) && (wx < width) && (wy >= 0) && (wy < height))
+					if (GetPixel(wx, wy) == identifier)
 					{
-						if (GetPixel(wx, wy) == identifier)
-						{
-							one_sum++;
-						}
-						else {
-							zero_sum++;
-						}
+						one_sum++;
+					}
+					else {
+						zero_sum++;
 					}
 				}
 			}
@@ -574,42 +571,33 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 				{
 					for (wy = j - windowsize; wy <= (j + windowsize); wy++)
 					{
-						if ((wy >= 0) && (wy < height))
+						if (direction)
 						{
-							if (direction)
-							{
-								wx = i - (windowsize + 1); // Remove from histogram moving to the right.
-							}
-							else {
-								wx = i + (windowsize + 1); // Remove from histogram moving to the left.
-							}
-							if ((wx >= 0) && (wx < width))
-							{
-								if (GetPixel(wx, wy) == identifier)
-								{
-									one_sum--;
-								}
-								else {
-									zero_sum--;
-								}
-							}
-							if (direction)
-							{
-								wx = i + windowsize; // Add to histogram moving to the right.
-							}
-							else {
-								wx = i - windowsize; // Add to histogram moving to the left.
-							}
-							if ((wx >= 0) && (wx < width))
-							{
-								if (GetPixel(wx, wy) == identifier)
-								{
-									one_sum++;
-								}
-								else {
-									zero_sum++;
-								}
-							}
+							wx = i - (windowsize + 1); // Remove from histogram moving to the right.
+						}
+						else {
+							wx = i + (windowsize + 1); // Remove from histogram moving to the left.
+						}
+						if (GetPixel(wx, wy) == identifier)
+						{
+							one_sum--;
+						}
+						else {
+							zero_sum--;
+						}
+						if (direction)
+						{
+							wx = i + windowsize; // Add to histogram moving to the right.
+						}
+						else {
+							wx = i - windowsize; // Add to histogram moving to the left.
+						}
+						if (GetPixel(wx, wy) == identifier)
+						{
+							one_sum++;
+						}
+						else {
+							zero_sum++;
 						}
 					}
 				}
@@ -651,30 +639,21 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 						// Calcluate changes to histogram from dropping down one row.
 						for (wx = (i - windowsize); wx <= (i + windowsize); wx++)
 						{
-							if ((wx >= 0) && (wx < width))
+							wy = j - (windowsize + 1); // Remove from histogram
+							if (GetPixel(wx, wy) == identifier)
 							{
-								wy = j - (windowsize + 1); // Remove from histogram
-								if (wy >= 0)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum--;
-									}
-									else {
-										zero_sum--;
-									}
-								}
-								wy = j + windowsize; // Add to histogram
-								if (wy < height)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum++;
-									}
-									else {
-										zero_sum++;
-									}
-								}
+								one_sum--;
+							}
+							else {
+								zero_sum--;
+							}
+							wy = j + windowsize; // Add to histogram
+							if (GetPixel(wx, wy) == identifier)
+							{
+								one_sum++;
+							}
+							else {
+								zero_sum++;
 							}
 						}
 					}
@@ -692,15 +671,12 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 				disc_index = abs(wy - bbox.y0);
 				for (wx = bbox.x0 - disc_chord[disc_index]; wx <= (bbox.x0 + disc_chord[disc_index]); wx++)
 				{
-					if ((wx >= 0) && (wx < width) && (wy >= 0) && (wy < height))
+					if (GetPixel(wx, wy) == identifier)
 					{
-						if (GetPixel(wx, wy) == identifier)
-						{
-							one_sum++;
-						}
-						else {
-							zero_sum++;
-						}
+						one_sum++;
+					}
+					else {
+						zero_sum++;
 					}
 				}
 			}
@@ -716,57 +692,42 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 				{
 					for (wy = j - windowsize; wy <= (j + windowsize); wy++)
 					{
-						if ((wy >= 0) && (wy < height))
+						disc_index = abs(wy - j);
+						if (direction)
 						{
-							disc_index = abs(wy - j);
-							if (direction)
+							wx = (i + disc_chord[disc_index]);
+							if (GetPixel(wx, wy) == identifier)
 							{
-								wx = (i + disc_chord[disc_index]);
-								if (wx < width)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum++;
-									}
-									else {
-										zero_sum++;
-									}
-								}
-								wx = (i - disc_chord[disc_index]) - 1;
-								if (wx >= 0)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum--;
-									}
-									else {
-										zero_sum--;
-									}
-								}
+								one_sum++;
 							}
 							else {
-								wx = (i + disc_chord[disc_index]) + 1;
-								if (wx < width)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum--;
-									}
-									else {
-										zero_sum--;
-									}
-								}
-								wx = (i - disc_chord[disc_index]);
-								if (wx >= 0)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum++;
-									}
-									else {
-										zero_sum++;
-									}
-								}
+								zero_sum++;
+							}
+							wx = (i - disc_chord[disc_index]) - 1;
+							if (GetPixel(wx, wy) == identifier)
+							{
+								one_sum--;
+							}
+							else {
+								zero_sum--;
+							}
+						}
+						else {
+							wx = (i + disc_chord[disc_index]) + 1;
+							if (GetPixel(wx, wy) == identifier)
+							{
+								one_sum--;
+							}
+							else {
+								zero_sum--;
+							}
+							wx = (i - disc_chord[disc_index]);
+							if (GetPixel(wx, wy) == identifier)
+							{
+								one_sum++;
+							}
+							else {
+								zero_sum++;
 							}
 						}
 					}
@@ -809,31 +770,22 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 						// Calcluate changes to histogram from dropping down one row.
 						for (wx = (i - windowsize); wx <= (i + windowsize); wx++)
 						{
-							if ((wx >= 0) && (wx < width))
+							disc_index = abs(wx - i);
+							wy = (j - disc_chord[disc_index]) - 1;
+							if (GetPixel(wx, wy) == identifier)
 							{
-								disc_index = abs(wx - i);
-								wy = (j - disc_chord[disc_index]) - 1;
-								if (wy >= 0)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum--;
-									}
-									else {
-										zero_sum--;
-									}
-								}
-								wy = (j + disc_chord[disc_index]);
-								if (wy < height)
-								{
-									if (GetPixel(wx, wy) == identifier)
-									{
-										one_sum++;
-									}
-									else {
-										zero_sum++;
-									}
-								}
+								one_sum--;
+							}
+							else {
+								zero_sum--;
+							}
+							wy = (j + disc_chord[disc_index]);
+							if (GetPixel(wx, wy) == identifier)
+							{
+								one_sum++;
+							}
+							else {
+								zero_sum++;
 							}
 						}
 					}
