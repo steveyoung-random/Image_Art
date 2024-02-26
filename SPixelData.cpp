@@ -885,7 +885,7 @@ float SPixelData::CalculateRadius(std::vector<Corner>::iterator curve_begin, std
 		else {
 			it->radius_p0 = last_radius;
 		}
-		it->radius_p1 = RadiusTransverse(p1, c1, mask_value); // *** Problem here, c1 may be undefined, and may be the same as p1.
+		it->radius_p1 = RadiusTransverse(p1, c1, mask_value);
 		ret += it->radius_p1;
 		count++;
 		last_radius = it->radius_p1;
@@ -936,7 +936,7 @@ float SPixelData::RadiusTransverse(FloatPointPair p, FloatPointPair c, int mask_
 
 	if ((abs(dx) < EFFECTIVE_ZERO) && (abs(dy) < EFFECTIVE_ZERO))
 	{
-		return -1.0;
+		return 0.0;
 	}
 
 	if (abs(dy) > abs(dx)) // Perpendicular line is dominantly in the x direction.
