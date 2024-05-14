@@ -525,7 +525,7 @@ bool SkeletonPointCollection::FindSkeletonLinks()
 	return true;
 }
 
-bool SkeletonPointCollection::FindLongestPath()
+bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 {
 	std::set<SkeletonPointIndex>::iterator point_it;
 	std::set<SkeletonPointIndex>::iterator far_point_it;
@@ -742,6 +742,10 @@ bool SkeletonPointCollection::FindLongestPath()
 						prev = *it;
 					}
 				}
+			}
+			if (just_one)
+			{
+				return true;
 			}
 		}
 		else {

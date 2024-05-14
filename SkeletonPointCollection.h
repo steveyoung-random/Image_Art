@@ -64,7 +64,7 @@ public:
 
 	bool FindSkeletonPoints();
 	bool FindSkeletonLinks();
-	bool FindLongestPath();
+	bool FindLongestPaths(bool just_one = false);
 	bool RecalcDistances();
 	int FindDirSmallestTempDist(Skeleton_Point* sp);
 	bool AddSkeletonEndpoint(PointPair p);

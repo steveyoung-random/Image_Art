@@ -361,6 +361,11 @@ SuperPixel* SuperPixel::GetTail()
 	return tail;
 }
 
+SuperPixelType SuperPixel::GetType()
+{
+	return type;
+}
+
 SuperPixel* SuperPixel::GetByIdentifier(int key)
 {
 	if (workspace != NULL)
@@ -611,17 +616,28 @@ bool SuperPixel::FindPaths(bool use_meeting_points, bool polygon, bool fine)
 	{
 		return false;
 	}
+
+	/*
 	it = EdgePixels.begin();
 	PointPair start = Pos2XY(*it);
 	Path* p = new Path(this, start, use_meeting_points, polygon, fine);
-	if (NULL != p)
+	if (NULL != p)  // *** p may have a zero value for PointSet.  Can't assume that the first point will return anything.  At some, point there may be none.  Fold this into remaining process below.
 	{
 		path_list_head = p;
 		path_list_tail = p;
-	}
+	}  // *** What if NULL == p?  Need to return false, right?
 	std::set<int> p_set = p->GetPointSet();
 	std::set<int> remaining;
 	std::set_difference(EdgePixels.begin(), EdgePixels.end(), p_set.begin(), p_set.end(), std::inserter(remaining, remaining.begin()));
+
+	*/
+
+	Path* p = NULL;
+	std::set<int> p_set;
+	std::set<int> remaining;
+	p_set.clear();
+	remaining.clear();
+	remaining.insert(EdgePixels.begin(), EdgePixels.end());
 
 	int last_remaining_size = 0;
 	while (remaining.size() != last_remaining_size)
@@ -629,8 +645,7 @@ bool SuperPixel::FindPaths(bool use_meeting_points, bool polygon, bool fine)
 		last_remaining_size = remaining.size();
 		for (it = remaining.begin(); it != remaining.end(); it++)
 		{
-			Path* ret = path_list_head->GetByEdgePixel(Pos2XY(*it));
-			if (NULL == ret)
+			if ((NULL == path_list_head) || (NULL == path_list_head->GetByEdgePixel(Pos2XY(*it))))
 			{
 				p = new Path(this, Pos2XY(*it), use_meeting_points, polygon, fine);
 				if (NULL == p)
@@ -638,13 +653,23 @@ bool SuperPixel::FindPaths(bool use_meeting_points, bool polygon, bool fine)
 					throw std::runtime_error("No path found for edge pixel.\n");
 					return false;
 				}
-				path_list_tail->InsertNext(p);
-				path_list_tail = p;
-				p_set = p->GetPointSet();
-				std::set<int> r_set(remaining);
-				remaining.clear();
-				std::set_difference(r_set.begin(), r_set.end(), p_set.begin(), p_set.end(), std::inserter(remaining, remaining.begin()));
-				break;
+				if (p->GetPointSet().size() > 3) 
+				{
+					if (NULL == path_list_head)
+					{
+						path_list_head = p;
+						path_list_tail = p;
+					}
+					else {
+						path_list_tail->InsertNext(p);
+						path_list_tail = p;
+					}
+					p_set = p->GetPointSet();
+					std::set<int> r_set(remaining);
+					remaining.clear();
+					std::set_difference(r_set.begin(), r_set.end(), p_set.begin(), p_set.end(), std::inserter(remaining, remaining.begin()));
+					break;
+				}
 			}
 		}
 	}
@@ -894,7 +919,7 @@ bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
 				local_color.channel[chan] = sqrt(channel_squared[chan] / count);
 			}
 			local_color = CalculateContrastColor(local_color);
-			img->SetPixel(i-bbox.x0, j-bbox.y0, local_color);
+			img->SetPixel(i - bbox.x0, j - bbox.y0, local_color);
 		}
 		// Move horizontally
 		i += direction;
@@ -957,7 +982,7 @@ bool SuperPixel::GenerateContrastImage(SPixelData* pdata, int radius)
 	{
 		throw std::runtime_error("Failed to collapse data_wide in GenerateContrastImage.\n");
 	}
-	if (0 == stbi_write_png_to_func(write_png_to_mem, this, width, height, 3, img->GetData(), 3*width))
+	if (0 == stbi_write_png_to_func(write_png_to_mem, this, width, height, 3, img->GetData(), 3 * width))
 	{
 		throw std::runtime_error("Unable to calculate fill_image.\n");
 	}
@@ -985,23 +1010,51 @@ Color SuperPixel::CalculateContrastColor(Color opposing)
 	ret.channel[0] = post;
 	ret = img->RGBconvert(ret);
 
-	//for (int chan = 0; chan < 3; ++chan)
-	//{
-	//	int post = ret.channel[chan];
-	//	post = post - ((int)opposing.channel[chan] - post)/2;
-	//	if (post <= 0)
-	//	{
-	//		ret.channel[chan] = 0;
-	//	}
-	//	else if (post >= 255)
-	//	{
-	//		ret.channel[chan] = 255;
-	//	}
-	//	else {
-	//		ret.channel[chan] = post;
-	//	}
-	//}
 	return ret;
+}
+
+SuperPixel* SuperPixel::DuplicateSuperPixelSet(SPixelData* sd) // Creates a duplicate set of SuperPixels, using the given SPixelData if it is provided.
+{
+	SuperPixel* head = NULL;
+	SuperPixel* current = GetHead();
+	SPixelData* data = sd;
+	if (NULL == sd)
+	{
+		data = current->GetPixelData();
+	}
+	else {
+		data = sd;
+	}
+	WorkSpace* wspace = current->GetWorkspace();
+	SuperPixelType t = current->GetType();
+	head = new SuperPixel(*current, current->GetGradient(), data, NULL, NULL, wspace, t);
+	current = current->GetNext();
+	SuperPixel* LocalPrev = head;
+	while (NULL != current)
+	{
+		SuperPixel* LocalSP = new SuperPixel(*current, current->GetGradient(), data, NULL, LocalPrev, wspace, t);
+		LocalPrev->SetNext(LocalSP);
+		current = current->GetNext();
+		LocalPrev = LocalSP;
+	}
+	return head;
+}
+
+bool SuperPixel::DeletePathList()
+{
+	Path* current_path = NULL;
+	Path* next_path = path_list_head;
+	while (NULL != next_path)
+	{
+		current_path = next_path;
+		next_path = current_path->GetNext();
+		delete current_path;
+	}
+	path_list_head = NULL;
+	path_list_tail = NULL;
+	EdgePixelsCurrent = false;
+	EdgePixels.clear();
+	return true;
 }
 
 bool SuperPixel::CalculateSize()
@@ -1220,7 +1273,180 @@ PointPair SuperPixel::Split(ImageData* image, bool diagonals)
 	return ret;
 }
 
-SuperPixel* SuperPixel::Thin(GradData* graddat, SPixelData* pixdat, SuperPixel* prev, bool glitch3)
+
+bool SuperPixel::SeparateDiscontinuousSuperPixel()
+{
+	// Step 1: See whether there are disconnected edge paths.
+	if (NULL == path_list_head)
+	{
+		// Need to find paths.
+		FindPaths(false, false, false);
+	}
+	if (path_list_head == path_list_tail)
+	{
+		// There is only one contiguous area.
+		return true;
+	}
+	// Step 2:  Loop through any other paths that are forward paths (e.g. not interior paths).
+	Path* current_path = path_list_head->GetNext();
+	int point = 0;
+	while (NULL != current_path)
+	{
+		Path* subsequent_path = current_path->GetNext();
+		point = *(current_path->GetPointSet().begin());
+
+		// Step 3: Generate new identifier.
+		int new_id = 0;
+		SuperPixel* current = GetHead();
+		while (NULL != current)
+		{
+			if (current->GetIdentifier() > new_id)
+			{
+				new_id = current->GetIdentifier();
+			}
+			current = current->GetNext();
+		}
+		new_id++; // Next available number is the new identifier.
+
+		// Step 4: Starting at point, flood-fill the existing pixeldata at point to be new identifier.
+		if (false == pixeldata->FloodReplace(point, identifier, new_id))
+		{
+			throw std::runtime_error("Path point not in original set.\n");
+			return false;
+		}
+
+		// Step 5: Calculate new bounding boxes.
+		RectQuad orig_box = { 0,0,0,0 };
+		RectQuad new_box = { 0,0,0,0 };
+		bool orig_seen = false;
+		bool new_seen = false;
+		for (int j = boundingbox.y0; j <= boundingbox.y1; j++)
+		{
+			for (int i = boundingbox.x0; i <= boundingbox.x1; i++)
+			{
+				int value = pixeldata->GetPixel(i, j);
+				if (identifier == value)
+				{
+					if (orig_seen)
+					{
+						if (i < orig_box.x0)
+						{
+							orig_box.x0 = i;
+						}
+						if (i > orig_box.x1)
+						{
+							orig_box.x1 = i;
+						}
+						if (j < orig_box.y0)
+						{
+							orig_box.y0 = j;
+						}
+						if (j > orig_box.y1)
+						{
+							orig_box.y1 = j;
+						}
+					}
+					else {
+						orig_box.x0 = i;
+						orig_box.y0 = j;
+						orig_box.x1 = i;
+						orig_box.y1 = j;
+						orig_seen = true;
+					}
+				}
+				else if (new_id == value)
+				{
+					if (new_seen)
+					{
+						if (i < new_box.x0)
+						{
+							new_box.x0 = i;
+						}
+						if (i > new_box.x1)
+						{
+							new_box.x1 = i;
+						}
+						if (j < new_box.y0)
+						{
+							new_box.y0 = j;
+						}
+						if (j > new_box.y1)
+						{
+							new_box.y1 = j;
+						}
+					}
+					else {
+						new_box.x0 = i;
+						new_box.y0 = j;
+						new_box.x1 = i;
+						new_box.y1 = j;
+						new_seen = true;
+					}
+				}
+			}
+		}
+		if (false == new_seen)
+		{
+			throw std::runtime_error("Failed to find new pixels in SeparateDiscontinuousSuperPixel.\n");
+			return false;
+		}
+
+		// Step 6: Confirm that there are original identifier pixels left.
+		if (false == orig_seen)
+		{
+			// Replace original entirely with the new one.
+			SetIdentifierandBox(new_id, new_box);
+		}
+		else {
+			// Step 7: Create new SuperPixel.
+			PointPair seed;
+			seed.y = point / pixeldata->GetWidth();
+			seed.x = point - (seed.y * pixeldata->GetWidth());
+			SuperPixel* newSP = NULL;
+			if (NULL == gradientdata)
+			{
+				newSP = new SuperPixel(new_id, pixeldata, seed, NULL, GetTail(), workspace, type);
+			}
+			else {
+				newSP = new SuperPixel(new_id, gradientdata, pixeldata, seed, NULL, GetTail(), workspace, type);
+			}
+			if (NULL == newSP)
+			{
+				throw std::runtime_error("Failed to create new SuperPixel in SeparateDiscontinuousSuperPixel.\n");
+				return false;
+			}
+			newSP->SetWindow(new_box);
+
+			// Step 8: Determine which paths (with embedded sub-paths) go with the new SuperPixel.
+			Path* local_path = GetPathHead();
+			while (NULL != local_path)
+			{
+				Path* local_next_path = local_path->GetNext();
+				std::set<int> points = local_path->GetPointSet();
+				int pos = *points.begin();
+				int y = pos / pixeldata->GetWidth();
+				int x = pos - (y * pixeldata->GetWidth());
+				int value = pixeldata->GetPixel(x, y);
+				if (new_id == value) // This path needs to move over to the new SuperPixel.
+				{
+					if (local_path == subsequent_path)  // Not sure this can happen.
+					{
+						subsequent_path = subsequent_path->GetNext();
+					}
+					local_path->MoveSuperPixel(newSP);
+				}
+				local_path = local_next_path;
+			}
+
+			// Step 9: Set the color of the new SuperPixel to the same as the original.
+			newSP->SetAveColor(AveColor);
+		}
+		current_path = subsequent_path;
+	}
+	return true;
+}
+
+SuperPixel* SuperPixel::Thin(GradData* graddat, SPixelData* pixdat, SuperPixel* prev, bool only_one, bool glitch3)
 {
 	bool changed = true;
 	SuperPixel* ret = NULL;
@@ -1240,7 +1466,7 @@ SuperPixel* SuperPixel::Thin(GradData* graddat, SPixelData* pixdat, SuperPixel* 
 	ret->FindSkeletonPoints();
 	ret->skeleton_collection->FindSkeletonLinks();
 	ret->skeleton_collection->RecalcDistances();
-	ret->skeleton_collection->FindLongestPath();
+	ret->skeleton_collection->FindLongestPaths(only_one);
 	size = EdgePixels.size();
 	if (NULL != ret->path_list_head)
 	{

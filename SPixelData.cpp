@@ -3,6 +3,7 @@
 
 #include "SPixelData.h"
 #include "SuperPixel.h"
+#include <cstring>
 
 SPixelData::SPixelData(int w, int h)
 {
@@ -148,7 +149,7 @@ bool SPixelData::SetPixel(int x, int y, int value)
 		return true;
 	}
 	else {
-		throw (std::runtime_error("Attempt to set SPixelData value outside the boundaries.\n"));
+//		throw (std::runtime_error("Attempt to set SPixelData value outside the boundaries.\n"));
 		return false;
 	}
 }
@@ -276,7 +277,7 @@ bool SPixelData::erode(int mode, int struct_size)
 	else
 		// Disc
 	{
-		disc_chord = (int*)malloc(sizeof(int) * (windowsize + 1));
+		disc_chord = (int*)malloc(sizeof(int) * windowsize + sizeof(int));
 		if (NULL == disc_chord)
 		{
 			throw (std::runtime_error("Unable to allocate memory for disc_chord for erode.\n"));
@@ -354,7 +355,7 @@ bool SPixelData::dilate(SuperPixel* sp, int mode, int struct_size)
 
 	if (1 == mode)
 	{
-		disc_chord = (int*)malloc(sizeof(int) * (windowsize + 1));
+		disc_chord = (int*)malloc(sizeof(int) * windowsize + sizeof(int));
 		if (NULL == disc_chord)
 		{
 			throw (std::runtime_error("Unable to allocate memory for disc_chord for dilate.\n"));
@@ -522,7 +523,7 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 
 	if (1 == mode)
 	{
-		disc_chord = (int*)malloc(sizeof(int) * (windowsize + 1));
+		disc_chord = (int*)malloc(sizeof(int) * windowsize + sizeof(int));
 		if (NULL == disc_chord)
 		{
 			throw (std::runtime_error("Unable to allocate memory for disc_chord for dilate_erode.\n"));
@@ -660,8 +661,7 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 				}
 			}
 		}
-		else
-			// Disc
+		else if (1 == mode)  // Disc
 		{
 			int i, j, wx, wy, disc_index;
 
@@ -807,14 +807,14 @@ ImageData* SPixelData::GenerateImage(SuperPixel* sp, Color background)
 {
 	ImageData* ret = NULL;
 	SuperPixel* current = NULL;
-	Color black;
-	Color red;
-	black.channel[0] = 0;
-	black.channel[1] = 0;
-	black.channel[2] = 0;
-	red.channel[0] = 255;
-	red.channel[1] = 0;
-	red.channel[2] = 0;
+	Color black = { 0, 0, 0 };
+	Color red = { 255, 0, 0 };
+	//black.channel[0] = 0;
+	//black.channel[1] = 0;
+	//black.channel[2] = 0;
+	//red.channel[0] = 255;
+	//red.channel[1] = 0;
+	//red.channel[2] = 0;
 	ret = new ImageData(NULL, width, height, 3);
 	if (NULL == ret)
 	{
@@ -899,7 +899,7 @@ float SPixelData::CalculateRadius(std::vector<Corner>::iterator curve_begin, std
 			count++;
 		}
 		else { // Proper bezier curve.  Assume that the apex is at t=0.5, though it may not be.  Hopefully it is close.
-			FloatPointPair N; // Point where apex is estimated to be.
+			FloatPointPair N = { 0, 0 }; // Point where apex is estimated to be.
 			N.x = 0.125 * (p0.x + p1.x) + 0.375 * (c0.x + c1.x);
 			N.y = 0.125 * (p0.y + p1.y) + 0.375 * (c0.y + c1.y);
 			// Change c1 to be on a line with c0 that is parallel to p0p1.

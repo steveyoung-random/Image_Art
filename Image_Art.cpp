@@ -325,6 +325,16 @@ int main(int argc, char** argv)
 			{
 				postproc_windowsize = atoi(value.c_str());
 			}
+			else if ((tag == "paint_mask") || (tag == "mask") || (tag == "pm"))
+			{
+				if (atoi(value.c_str()) > 0)
+				{
+					prop.paint_mask = true;
+				}
+				else {
+					prop.paint_mask = false;
+				}
+			}
 			else if ((tag == "pal") || (tag == "palette"))
 			{
 				palette = atoi(value.c_str());
@@ -487,7 +497,7 @@ int main(int argc, char** argv)
 		std::cout << "Paint scale: " << prop.paint_scale << "\n";
 		std::cout << "Bristle coefficient: " << prop.bristles << " Sub-pixel: " << prop.sub_pixel << " Bristle thinness factor: " << prop.bristle_thin_factor << "\n";
 		std::cout << "Brush width: " << prop.brush_width << " Radius variation: " << prop.radius_variation << " Brush width override: " << prop.brush_width_override << "\n";
-		std::cout << "Flow: " << prop.flow << " Flow variation: " << prop.flow_variation << "\n";
+		std::cout << "Flow: " << prop.flow << " Flow variation: " << prop.flow_variation << " Use Mask: " << prop.paint_mask << "\n";
 		std::cout << "Background color: ";
 
 		if (0 == prop.background)
@@ -526,7 +536,7 @@ int main(int argc, char** argv)
 		{
 			file_output = 1;
 		}
-		std::cout << "File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint\n";
+		std::cout << "File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint, 64: progressive paint\n";
 		std::cout << "Outputs:\n";
 		if (1 == (file_output & 1))
 		{
@@ -551,6 +561,10 @@ int main(int argc, char** argv)
 		if (32 == (file_output & 32))
 		{
 			std::cout << "paint\n";
+		}
+		if (64 == (file_output & 64))
+		{
+			std::cout << "progressive paint\n";
 		}
 
 		if ("" != inpath)
@@ -796,18 +810,15 @@ int main(int argc, char** argv)
 				std::cout << ".";
 				delete data_revised;
 			}
-			if ((1 == (file_output & 1)) || (32 == (file_output & 32)))
+			if (1 == (file_output & 1))
 			{
-				workspace->ThinSuperPixels(prop.glitch3);
-				if (1 == (file_output & 1))
-				{
-					data_revised = workspace->GenerateImage(2, prop);
-					temppath = path;
-					temppath.append(OUTPUT).append("_skeleton");
-					data_revised->write_file(temppath);
-					std::cout << ".";
-					delete data_revised;
-				}
+				workspace->ThinSuperPixels(false, prop.glitch3);
+				data_revised = workspace->GenerateImage(2, prop);
+				temppath = path;
+				temppath.append(OUTPUT).append("_skeleton");
+				data_revised->write_file(temppath);
+				std::cout << ".";
+				delete data_revised;
 			}
 			if (32 == (file_output & 32))
 			{
@@ -824,6 +835,15 @@ int main(int argc, char** argv)
 				temppath.append("SuperPixels_Paint_Paths.svg");
 				workspace->WritePaintCurvesSVG(temppath);
 				std::cout << ".";
+			}
+			if (64 == (file_output & 64))
+			{
+				data_revised = workspace->GenerateImage(4, prop);
+				temppath = path;
+				temppath.append(OUTPUT).append("_prog_paint");
+				data_revised->write_file(temppath);
+				std::cout << ".";
+				delete data_revised;
 			}
 			if (postproc_windowsize > 0)
 			{
@@ -990,18 +1010,15 @@ int main(int argc, char** argv)
 						workspace->WriteSeeds(temppath);
 						std::cout << ".";
 					}
-					if ((1 == (file_output & 1)) || (32 == (file_output & 32)))
+					if (1 == (file_output & 1))
 					{
-						workspace->ThinSuperPixels(prop.glitch3);
-						if (1 == (file_output & 1))
-						{
-							data_revised = workspace->GenerateImage(2, prop);
-							temppath = path;
-							temppath.append(OUTPUT).append("_skeleton");
-							data_revised->write_file(temppath);
-							delete data_revised;
-							std::cout << ".";
-						}
+						workspace->ThinSuperPixels(false, prop.glitch3);
+						data_revised = workspace->GenerateImage(2, prop);
+						temppath = path;
+						temppath.append(OUTPUT).append("_skeleton");
+						data_revised->write_file(temppath);
+						std::cout << ".";
+						delete data_revised;
 					}
 					if (early_palette)
 					{
@@ -1019,8 +1036,8 @@ int main(int argc, char** argv)
 						temppath = path;
 						temppath.append(OUTPUT).append("_paint");
 						data_revised->write_file(temppath);
-						delete data_revised;
 						std::cout << ".";
+						delete data_revised;
 					}
 					if (1 == (file_output & 1))
 					{
@@ -1028,6 +1045,15 @@ int main(int argc, char** argv)
 						temppath.append("SuperPixels_Paint_Paths.svg");
 						workspace->WritePaintCurvesSVG(temppath);
 						std::cout << ".";
+					}
+					if (64 == (file_output & 64))
+					{
+						data_revised = workspace->GenerateImage(4, prop);
+						temppath = path;
+						temppath.append(OUTPUT).append("_prog_paint");
+						data_revised->write_file(temppath);
+						std::cout << ".";
+						delete data_revised;
 					}
 					if (postproc_windowsize > 0)
 					{
@@ -1050,7 +1076,6 @@ int main(int argc, char** argv)
 					}
 					if (4 == (file_output & 4))
 					{
-						workspace->FindPaths(0, polygon, fine);
 						std::cout << ".";
 						temppath = path;
 						temppath.append("SuperPixels.svg");

@@ -75,6 +75,8 @@ public:
 	bool FindPaths(bool use_meeting_points = true, bool polygon = true, bool fine = true);
 	bool GenerateContrastImage(SPixelData* pdata, int radius);
 	Color CalculateContrastColor(Color opposing);
+	SuperPixel* DuplicateSuperPixelSet(SPixelData* sd = NULL);
+	bool DeletePathList();
 
 	Color GetAveColor();
 	float GetAveError();
@@ -96,6 +98,7 @@ public:
 	PointPair GetSeed();
 	int GetSize();
 	SuperPixel* GetTail();
+	SuperPixelType GetType();
 	RectQuad GetWindow();
 	WorkSpace* GetWorkspace();
 
@@ -119,7 +122,8 @@ public:
 	bool SetWorkspace(WorkSpace* ws);
 
 	PointPair Split(ImageData* image, bool diagonals = false);
-	SuperPixel* Thin(GradData* graddat, SPixelData* pixdat, SuperPixel* prev, bool glitch3 = false);
+	bool SeparateDiscontinuousSuperPixel();
+	SuperPixel* Thin(GradData* graddat, SPixelData* pixdat, SuperPixel* prev, bool only_one, bool glitch3 = false);
 	bool Thin_Subiteration(int n, bool global_changed);
 
 	PointPair Pos2XY(int pos);

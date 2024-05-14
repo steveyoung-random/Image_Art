@@ -11,6 +11,7 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 	width = w;
 	height = h;
 	colorchannels = n;
+	brush = NULL;
 	data = (unsigned char*)malloc(sizeof(unsigned char) * width * height * colorchannels);
 	if (NULL == data)
 	{
@@ -65,7 +66,7 @@ ImageData::~ImageData()
 
 Color ImageData::GetPixel(int x, int y)
 {
-	Color ret;
+	Color ret = { 0, 0, 0 };
 	long pos = y * width + x;
 	long npos = colorchannels * pos;
 	for (int i = 0; (i < 3) && (i < colorchannels); ++i)
@@ -134,7 +135,7 @@ bool ImageData::CreateBrush(FloatPointPair start, Color c, Color sec, int r, Pai
 	return true;
 }
 
-bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask_value)
+bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask_value, bool use_mask, SPixelData* extinguish_mask)
 {
 	if (NULL == data_wide)
 	{
@@ -147,10 +148,10 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 		local_corner = *it;
 		if (local_corner.smooth)
 		{
-			brush->PaintCorner2(local_corner, data_wide, width, height, mask, mask_value);
+			brush->PaintCorner2(local_corner, data_wide, width, height, mask, mask_value, use_mask, extinguish_mask);
 		}
 		else {
-			FloatPointPair dir;
+			FloatPointPair dir = { 0, 0 };
 			if (curve.begin() == it)
 			{
 				if ((abs(local_corner.c0.x - local_corner.p0.x) > EFFECTIVE_ZERO) || (abs(local_corner.c0.y - local_corner.p0.y) > EFFECTIVE_ZERO))
@@ -168,10 +169,47 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 			dir.x = cos(o);
 			dir.y = sin(o);
 			brush->MoveTo(local_corner.p0);
-			brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, local_corner.radius_p0, local_corner.radius_c0, true);
-			brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, local_corner.radius_c0, local_corner.radius_p1, false);
+			brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_p0, local_corner.radius_c0, true, extinguish_mask);
+			brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_c0, local_corner.radius_p1, false, extinguish_mask);
 		}
 	}
+	/*
+	if (extinguish)
+	{
+		for (it = curve.begin(); it != curve.end(); ++it)
+		{
+			local_corner = *it;
+			if (local_corner.smooth)
+			{
+				brush->ExtinguishCorner(local_corner, data_wide, width, height, mask, mask_value);
+			}
+			else {
+				FloatPointPair dir = { 0, 0 };
+				if (curve.begin() == it)
+				{
+					if ((abs(local_corner.c0.x - local_corner.p0.x) > EFFECTIVE_ZERO) || (abs(local_corner.c0.y - local_corner.p0.y) > EFFECTIVE_ZERO))
+					{
+						dir.x = local_corner.c0.x - local_corner.p0.x;
+						dir.y = local_corner.c0.y - local_corner.p0.y;
+					}
+					else {
+						dir.x = local_corner.p1.x - local_corner.p0.x;
+						dir.y = local_corner.p1.y - local_corner.p0.y;
+					}
+					// *** write new functions for below. ***
+//					brush->SetOrientation(dir);
+				}
+// 				float o = brush->GetOrientation();
+				//dir.x = cos(o);
+				//dir.y = sin(o);
+//				brush->MoveTo(local_corner.p0);
+//				brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_p0, local_corner.radius_c0, true);
+//				brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_c0, local_corner.radius_p1, false);
+			}
+		}
+	}
+	*/
+
 	return true;
 }
 
@@ -403,8 +441,8 @@ GradData* ImageData::gen_diff(ImageData* image2)
 
 Color ImageData::CIELABconvert(unsigned char r, unsigned char g, unsigned char b)
 {
-	Color ret; // L*, a*, b* format.
-	double lin[3];
+	Color ret = { 0, 0, 0 }; // L*, a*, b* format.
+	double lin[3] = { 0, 0, 0 };
 	// Step 1, linearize Display P3 values.
 	lin[0] = r / 255.0;
 	lin[1] = g / 255.0;
@@ -420,7 +458,7 @@ Color ImageData::CIELABconvert(unsigned char r, unsigned char g, unsigned char b
 		}
 	}
 	// Step 2, convert linearized RGB to XYZ
-	double XYZ[3];
+	double XYZ[3] = { 0, 0, 0 };
 	//XYZ[0] = 0.4865709 * lin[0] + 0.2656677 * lin[1] + 0.1982173 * lin[2];
 	//XYZ[1] = 0.2289746 * lin[0] + 0.6917385 * lin[1] + 0.0792869 * lin[2];
 	//XYZ[2] = 0.0000000 * lin[0] + 0.0451134 * lin[1] + 1.0439444 * lin[2];
@@ -452,10 +490,10 @@ Color ImageData::CIELABconvert(unsigned char r, unsigned char g, unsigned char b
 
 Color ImageData::RGBconvert(float L, float a, float b)
 {
-	Color ret;
-	double XYZ[3];
+	Color ret = { 0, 0, 0 };
+	double XYZ[3] = { 0, 0, 0 };
 	// Calculate Y
-	double fXYZ[3];
+	double fXYZ[3] = { 0, 0, 0 };
 	fXYZ[1] = (L + 16.0) / 116.0;
 	fXYZ[0] = a / 500.0 + fXYZ[1];
 	fXYZ[2] = fXYZ[1] - b / 200.0;
@@ -533,9 +571,9 @@ void write_png_to_mem(void* context, void* data, int size)
 	fill_string.clear();
 	int count = 0;
 	int remaining_bytes = 0;
-	unsigned char input[3];
+	unsigned char input[3] = { 0, 0, 0 };
 	unsigned char* input_data = (unsigned char*)data;
-	unsigned char output[4];
+	unsigned char output[4] = { 0, 0, 0, 0 };
 	while (count < size)
 	{
 		for (int i = 0; i < 3; ++i)

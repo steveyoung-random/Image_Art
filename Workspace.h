@@ -94,7 +94,7 @@ public:
 	bool WriteSuperPixelsSVG(std::string filename, int mode = 0, bool polygon = false, bool fine = false, int palette_size=0, int contrast_radius=0);
 	bool WritePaintCurvesSVG(std::string filename);
 	bool SplitSuperPixels(float num_sigmas);
-	bool ThinSuperPixels(bool glitch3 = false);
+	bool ThinSuperPixels(bool only_one=false, bool glitch3 = false, SuperPixel* sp = NULL, SPixelData* sd = NULL);
 	bool FindPaths(int mode = 0, bool polygon = true, bool fine = true);
 	bool FindNeighbors(int mode = 0);
 	bool InsertSPIntoIndex(SuperPixel* sp);
@@ -103,7 +103,10 @@ public:
 	bool CalculateSizes();
 	bool FindPalette(int mode, int palette_size);
 	bool ReduceToPalette(int mode, int palette_size);
-	bool SeparateSuperPixel(int current_id, int point);
+	bool SeparateDiscontinuousSuperPixel(SuperPixel* sp, int point);  // If SuperPixel has disconnected parts, split each contiguous part into its own SuperPixel.
+	bool SimplifySuperPixels(SuperPixel* sp);
+	bool DeleteSkeleton();
+	bool DeleteSuperPixelSet(SuperPixel* sp);
 
 	ImageData* GenerateImage(int mode, Paint_Properties prop);
 	ImageData* Gradient2Image(int mode = 0);

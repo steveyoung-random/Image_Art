@@ -17,7 +17,7 @@
 #define FLOW 20.0
 #define FLOW_VARIATION 10.0
 #define SUBPIXEL false
-#define BRUSH_WIDTH_FACTOR 1.8
+#define BRUSH_WIDTH_FACTOR (float)1.8
 #define BRISTLE_THIN_FACTOR 2.0
 #define BRUSH_SHAPE shape_straight
 #define BRUSH_WIDTH_OVERRIDE false
@@ -29,6 +29,7 @@
 #define FINGERPRINT "IMRT"
 #define CONTRAST_RADIUS 0
 #define CONTRAST_BOX_MARGIN 2
+#define PAINT_MASK true
 
 struct RectQuad {
 	int x0, y0, x1, y1;
@@ -85,4 +86,6 @@ struct Paint_Properties
 	float brush_width = BRUSH_WIDTH;
 	bool mix_paints = MIX_PAINTS;
 	bool radius_variation = RADIUS_VARIATION;
+	bool paint_mask = PAINT_MASK;
+	bool extinguish_paint = false;
 };

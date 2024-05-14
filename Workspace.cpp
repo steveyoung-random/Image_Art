@@ -1407,10 +1407,10 @@ bool WorkSpace::SplitSuperPixels(float num_sigmas)
 	return true;
 }
 
-bool WorkSpace::ThinSuperPixels(bool glitch3)
+bool WorkSpace::ThinSuperPixels(bool only_one, bool glitch3, SuperPixel* sp, SPixelData* sd)
 {
 	SuperPixel* skeleton_current = NULL;
-	if (NULL != list_head)
+	if ((NULL != list_head) || (NULL != sp))
 	{
 		if (NULL != skeleton_head)
 		{
@@ -1433,38 +1433,33 @@ bool WorkSpace::ThinSuperPixels(bool glitch3)
 			delete skeleton_pixeldata;
 		}
 
-		if (NULL == processed_head)
+		// SuperPixels may be disconnected.  Split them into new SuperPixels, if necessary.
+		if ((NULL != sp) && (NULL != sd))
 		{
-			skeleton_pixeldata = new SPixelData(*pixeldata);
-			current = list_head;
+			SimplifySuperPixels(sp);
+			skeleton_pixeldata = new SPixelData(*sd);
+			current = sp;
 		}
 		else {
-			// Because there has already been postprocessing, SuperPixels may be disconnected.  Split them into new SuperPixels, if necessary.
-			current = processed_head;
-			while (NULL != current)
+			if (NULL == processed_head)
 			{
-				if (current->GetPathHead() != current->GetPathTail())
-				{
-					Path* local_path = current->GetPathHead()->GetNext();
-					while (NULL != local_path)
-					{
-						int point = *(local_path->GetPointSet().begin());
-						SeparateSuperPixel(current->GetIdentifier(), point);
-						local_path = current->GetPathHead()->GetNext();
-					}
-				}
-				current = current->GetNext();
+				SimplifySuperPixels(list_head);
+				skeleton_pixeldata = new SPixelData(*pixeldata);
+				current = list_head;
 			}
-			skeleton_pixeldata = new SPixelData(*processed_pixeldata);
-			current = processed_head;
+			else {
+				SimplifySuperPixels(processed_head);
+				skeleton_pixeldata = new SPixelData(*processed_pixeldata);
+				current = processed_head;
+			}
 		}
 
-		skeleton_current = current->Thin(edge, skeleton_pixeldata, NULL, glitch3);
+		skeleton_current = current->Thin(edge, skeleton_pixeldata, NULL, only_one, glitch3);
 		skeleton_head = skeleton_current;
 		while (NULL != current->GetNext())
 		{
 			current = current->GetNext();
-			skeleton_current = current->Thin(edge, skeleton_pixeldata, skeleton_current, glitch3);
+			skeleton_current = current->Thin(edge, skeleton_pixeldata, skeleton_current, only_one, glitch3);
 		}
 		skeleton_tail = skeleton_head->GetTail();
 		return true;
@@ -1638,17 +1633,14 @@ bool WorkSpace::ReduceToPalette(int mode, int palette_size)
 	return ret;
 }
 
-bool WorkSpace::SeparateSuperPixel(int current_id, int point)
+bool WorkSpace::SeparateDiscontinuousSuperPixel(SuperPixel* sp, int point)
 {
 	// Step 1: Generate new identifier.
 
 	int new_id = 0;
-	if ((NULL == processed_head) || (NULL == processed_pixeldata))
-	{
-		throw std::runtime_error("SeparateSuperPixel called without processed SuperPixels.\n");
-		return false;
-	}
-	current = processed_head;
+	int current_id = sp->GetIdentifier();
+	SPixelData* current_data = sp->GetPixelData();
+	current = sp->GetHead();
 	while (NULL != current)
 	{
 		if (current->GetIdentifier() > new_id)
@@ -1658,12 +1650,13 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 		current = current->GetNext();
 	}
 	new_id++; // Next available number is the new identifier.
+	current = sp;
 
-	// Step 2: Starting at point, flood-fill the existing processed_pixeldata at point to be new identifier.
+	// Step 2: Starting at point, flood-fill the existing current_data at point to be new identifier.
 
-	if (false == processed_pixeldata->FloodReplace(point, current_id, new_id))
+	if (false == current_data->FloodReplace(point, current_id, new_id))
 	{
-		throw std::runtime_error("SeparateSuperPixel called on point not in original set.\n");
+		throw std::runtime_error("SeparateDiscontinuousSuperPixel called on point not in original set.\n");
 		return false;
 	}
 
@@ -1677,7 +1670,7 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 	{
 		for (int i = bbox.x0; i <= bbox.x1; i++)
 		{
-			int value = processed_pixeldata->GetPixel(i, j);
+			int value = current_data->GetPixel(i, j);
 			if (current_id == value)
 			{
 				if (orig_seen)
@@ -1748,12 +1741,7 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 	if (false == orig_seen)
 	{
 		// Replace original entirely with the new one.
-		current = processed_head->GetByIdentifier(current_id);
-		if (NULL == current)
-		{
-			throw std::runtime_error("SeparateSuperPixel called on non-existent SuperPixel.\n");
-			return false;
-		}
+		current = sp;
 		current->SetIdentifierandBox(new_id, new_box);
 	}
 	else {
@@ -1765,10 +1753,10 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 		SuperPixel* newSP = NULL;
 		if (NULL == edge)
 		{
-			newSP = new SuperPixel(new_id, processed_pixeldata, seed, NULL, processed_tail, this, SPType_Processed);
+			newSP = new SuperPixel(new_id, current_data, seed, NULL, sp->GetTail(), this, sp->GetType());
 		}
 		else {
-			newSP = new SuperPixel(new_id, edge, processed_pixeldata, seed, NULL, processed_tail, this, SPType_Processed);
+			newSP = new SuperPixel(new_id, edge, current_data, seed, NULL, sp->GetTail(), this, sp->GetType());
 		}
 		if (NULL == newSP)
 		{
@@ -1776,15 +1764,19 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 			return false;
 		}
 		newSP->SetWindow(new_box);
-		InsertSPIntoIndex(newSP);
-		processed_tail = newSP;
+		//InsertSPIntoIndex(newSP);
 
+		list_tail = list_head->GetTail();
+		if (NULL != processed_head)
+		{
+			processed_tail = processed_head->GetTail();
+		}
 
 		// Step 6: Determine which paths (with embedded sub-paths) go with the new SuperPixel.
 
 		// Need to ensure that the processed SuperPixels will be returned, so recompute the SuperPixelSet.
 		RecalcSuperPixelSet();
-		current = processed_head->GetByIdentifier(current_id);
+		current = sp;
 		Path* local_path = current->GetPathHead();
 		while (NULL != local_path)
 		{
@@ -1792,7 +1784,7 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 			int pos = *points.begin();
 			int y = pos / width;
 			int x = pos - (y * width);
-			int value = processed_pixeldata->GetPixel(x, y);
+			int value = current_data->GetPixel(x, y);
 			if (new_id == value) // This path needs to move over to the new SuperPixel.
 			{
 				local_path->MoveSuperPixel(newSP);
@@ -1807,11 +1799,77 @@ bool WorkSpace::SeparateSuperPixel(int current_id, int point)
 	return true;
 }
 
+bool WorkSpace::SimplifySuperPixels(SuperPixel* sp)
+//  If any SuperPixels are discontinuous, split them into separate SuperPixels.
+{
+	if (NULL == sp)
+	{
+		throw std::runtime_error("Called SimplifySuperPixels with null pointer.\n");
+		return false;
+	}
+	current = sp->GetHead();
+	//// Test for whether paths have been calculated.
+	//if (NULL == current->GetPathHead())
+	//{
+	//	// Do edge path calculations.
+	//	while (NULL != current)
+	//	{
+	//		current->FindPaths(false, false, false);
+	//		current = current->GetNext();
+	//	}
+	//	current = sp->GetHead();
+	//}
+
+	while (NULL != current)
+	{
+		current->SeparateDiscontinuousSuperPixel();
+		current = current->GetNext();
+	}
+	list_tail = list_head->GetTail();
+	if (NULL != processed_head)
+	{
+		processed_tail = processed_head->GetTail();
+	}
+	RecalcSuperPixelSet();
+	return true;
+}
+
+bool WorkSpace::DeleteSkeleton()
+{
+	while (NULL != skeleton_head)
+	{
+		current = skeleton_head->GetNext();
+		delete (skeleton_head);
+		skeleton_head = current;
+	}
+	skeleton_tail = NULL;
+	return true;
+}
+
+bool WorkSpace::DeleteSuperPixelSet(SuperPixel* sp)
+{
+	SuperPixel* head = sp->GetHead();
+	if (NULL == head)
+	{
+		return false;
+	}
+	SuperPixel* next = head->GetNext();
+	delete head;
+	while (NULL != next)
+	{
+		head = next;
+		next = head->GetNext();
+		delete head;
+	}
+	return true;
+}
+
 ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 // Mode: 0=normal
 //       1=post-processed
 //       2=skeleton
-//		 3=painted paths w/out outlines
+//		 3=painted paths
+//       4=progressive painted paths
 // Background: 0=white
 //             1=black
 // glitch1: Create a glitched effect for the straight painted portions.
@@ -1849,7 +1907,6 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 	}
 	else if (2 == mode)
 	{
-
 		current = skeleton_head;
 		while (current != NULL)
 		{
@@ -1876,6 +1933,12 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 	{
 		int scale_width = width * prop.paint_scale;
 		int scale_height = height * prop.paint_scale;
+
+		if (NULL == skeleton_head)
+		{
+			ThinSuperPixels(false, prop.glitch3);
+		}
+
 		ImageData* img = NULL;
 		unsigned char* img_data = (unsigned char*)malloc(sizeof(unsigned char) * scale_width * scale_height * 3);
 		if (NULL == img_data)
@@ -1919,8 +1982,13 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				std::vector<Corner> curve = curve_path->GetCurve();
 				ave_radius = local_pixdata->CalculateRadius(curve.begin(), curve.end(), current->GetIdentifier());
 				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop);
-				img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
-				//img->PaintCurve(curve, NULL, 0);
+				if (prop.paint_mask)
+				{
+					img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
+				}
+				else {
+					img->PaintCurve(curve, NULL, 0);
+				}
 				if (prop.mix_paints)
 				{
 					second = current->GetAveColor();
@@ -1959,6 +2027,145 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 			}
 		}
 		img->CollapseWideData(false);
+		return img;
+	}
+	else if (4 == mode)
+	{
+		SPixelData* local_pixdata = NULL;
+		SuperPixel* local_sp = NULL;
+		SPixelData* extinguish_pixdata = NULL;
+		float ave_radius;
+		if (NULL != processed_pixeldata)
+		{
+			extinguish_pixdata = new SPixelData(*processed_pixeldata);
+		}
+		else {
+			extinguish_pixdata = new SPixelData(*pixeldata);
+		}
+		if (NULL == extinguish_pixdata)
+		{
+			throw std::runtime_error("Failed to allocate memory for extinguish_pixdata for progressive paint.\n");
+			return NULL;
+		}
+		local_pixdata = new SPixelData(*extinguish_pixdata);
+		if (NULL == local_pixdata)
+		{
+			throw std::runtime_error("Failed to allocate memory for local_pixdata for progressive paint.\n");
+			return NULL;
+		}
+		if (NULL != processed_head)
+		{
+			local_sp = processed_head->DuplicateSuperPixelSet(local_pixdata);
+		}
+		else {
+			local_sp = list_head->DuplicateSuperPixelSet(local_pixdata);
+		}
+
+		prop.extinguish_paint = true;  // This will cause extinguish_pixdata to be set to zero where painting has happened.
+		int scale_width = width * prop.paint_scale;
+		int scale_height = height * prop.paint_scale;
+		int count = 5;
+		prop.brush_width_override = true;
+		prop.paint_mask = false;
+		//		prop.radius_variation = false;
+
+		ImageData* img = NULL;
+		unsigned char* img_data = (unsigned char*)malloc(sizeof(unsigned char) * scale_width * scale_height * 3);
+		if (NULL == img_data)
+		{
+			throw std::runtime_error("Unable to allocate memory for paint image.\n");
+			return img;
+		}
+		img = new ImageData(img_data, scale_width, scale_height, 3, true);
+		img->SetBackground(bg);
+
+		while (count > 0)
+		{
+			count--;
+			DeleteSkeleton();
+			ThinSuperPixels(true, prop.glitch3, local_sp, local_pixdata);
+
+			// Skeleton path painting - only the longest path
+			current = skeleton_head;
+			Color second = white;
+
+			while (current != NULL)
+			{
+				Path* curve_path = current->GetPathHead();
+				if (NULL != curve_path)
+				{
+					if (false == prop.mix_paints)
+					{
+						Color lab = img->CIELABconvert(current->GetAveColor());
+						lab.channel[0] -= 10.0;
+						if (lab.channel[0] > 100.0)
+						{
+							lab.channel[0] = 100.0;
+						}
+						else if (lab.channel[0] < 0.0)
+						{
+							lab.channel[0] = 0.0;
+						}
+						second = img->RGBconvert(lab);
+					}
+					std::vector<Corner> curve = curve_path->GetCurve();
+					ave_radius = local_pixdata->CalculateRadius(curve.begin(), curve.end(), current->GetIdentifier());
+					img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop);
+					img->PaintCurve(curve, local_pixdata, current->GetIdentifier(), prop.paint_mask, extinguish_pixdata);
+					if (prop.mix_paints)
+					{
+						second = current->GetAveColor();
+					}
+				}
+				current = current->GetNext();
+			}
+			if (count > 0)
+			{
+				current = local_sp;
+				while (NULL != current)
+				{
+					current->DeletePathList();
+					current = current->GetNext();
+				}
+			}
+			local_pixdata->CopyData(extinguish_pixdata);
+		}
+		DeleteSuperPixelSet(local_sp);
+
+		/*
+		if (prop.outline)  // *** This is not going to work, unless limited to the first run.  ***
+		{
+			// Outline path painting
+			if (NULL != processed_head)
+			{
+				current = processed_head;
+			}
+			else {
+				current = list_head;
+			}
+			while (current != NULL)
+			{
+				Path* curve_path = current->GetPathHead();
+				while (NULL != curve_path)
+				{
+					std::vector<Corner> curve = curve_path->GetCurve();
+					Paint_Properties outline_prop = prop;
+					outline_prop.flow = 15.0;
+					outline_prop.bristles = 20.0;
+					outline_prop.flow_variation = 0;
+					outline_prop.radius_variation = false;
+					img->CreateBrush({ 100.0, 100.0 }, black, black, 3, outline_prop);
+					img->PaintCurve(curve, NULL, 0);
+					curve_path = curve_path->GetNext();
+				}
+				current = current->GetNext();
+			}
+		}
+		*/
+		img->CollapseWideData(false);
+		DeleteSkeleton();
+		delete(local_pixdata);
+		delete(extinguish_pixdata);
 		return img;
 	}
 	return NULL;

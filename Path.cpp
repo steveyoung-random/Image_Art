@@ -568,6 +568,7 @@ bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 			boundingbox.y0 = current.y;
 			boundingbox.x1 = current.x;
 			boundingbox.y1 = current.y;
+			point_set.insert(current.y * width + current.x);
 			//fine_points.push_back(current);
 			//current.x++;
 			//fine_points.push_back(current);

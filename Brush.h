@@ -8,6 +8,7 @@
 #include "General.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <array>
 
 class SPixelData;
 
@@ -36,7 +37,7 @@ class Brush
 {
 private:
 	brush_shape shape;
-	float orientation; // Radians. Indicates direction of movement of brush (default is moving towards x=1.0, y=0.0).
+	float orientation; // Radians. Indicates direction of movement of brush (default is moving towards x=1.0, y=0.0).  Positive moves a point at (1.0, 0.0) in the diretion of positive Y.
 	float brush_width;
 	float brush_depth;
 	int num_bristles;
@@ -53,15 +54,20 @@ public:
 
 	bool Dab(unsigned char* data, int width, int height);
 	bool Dab2(float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, float flow_adjustment = 1.0);
-	bool Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, bool begin=false);
+	bool Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, bool begin=false, SPixelData* extinguish_mask = NULL);
 	bool MoveTo(FloatPointPair loc);
 	bool PaintTo(FloatPointPair loc, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float rad1 = -1, float rad2 = -1);
-	bool PaintTo2(FloatPointPair loc2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float rad1 = -1, float rad2 = -1, bool begin=false);
+	bool PaintTo2(FloatPointPair loc2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, float rad1 = -1, float rad2 = -1, bool begin=false, SPixelData* extinguish_mask = NULL);
 	bool ChangeColor(Color c, Color sec);
 	bool PaintCorner(Corner corner, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, bool variable_radius = false);
-	bool PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0);
+	bool PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask=false, SPixelData* extinguish_mask=NULL);
+	bool ExtinguishCorner(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value);
 	bool SetOrientation(FloatPointPair o);
 	bool SetOrientation(float o);
 	float GetOrientation();
+	float CalculateOrientation(FloatPointPair direction);
+	float OrientationDifference(float o1, float o2);
 	float KernelAdjustment(int i, int j, float x, float y);
+	bool ExtinguishQuadrilateral(std::array<FloatPointPair, 4> points, int width, int height, SPixelData* extinguish_mask, int value);
+	bool ExtinguishLineSegment(std::array<FloatPointPair, 2> points, int width, int height, SPixelData* extinguish_mask, int value);
 };
