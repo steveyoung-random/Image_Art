@@ -1040,6 +1040,17 @@ SuperPixel* SuperPixel::DuplicateSuperPixelSet(SPixelData* sd) // Creates a dupl
 	return head;
 }
 
+bool SuperPixel::UpdateWorkspaceSuperPixelSet(WorkSpace* ws)
+{
+	SuperPixel* current = GetHead();
+	while (NULL != current)
+	{
+		current->SetWorkspace(ws);
+		current = current->GetNext();
+	}
+	return true;
+}
+
 bool SuperPixel::DeletePathList()
 {
 	Path* current_path = NULL;
@@ -1309,7 +1320,7 @@ bool SuperPixel::SeparateDiscontinuousSuperPixel()
 		new_id++; // Next available number is the new identifier.
 
 		// Step 4: Starting at point, flood-fill the existing pixeldata at point to be new identifier.
-		if (false == pixeldata->FloodReplace(point, identifier, new_id))
+		if (false == pixeldata->FloodReplace(point, identifier, new_id))  //*** Here.  Flood fill goes beyond the bounding box.  Why? ***
 		{
 			throw std::runtime_error("Path point not in original set.\n");
 			return false;
@@ -1416,6 +1427,7 @@ bool SuperPixel::SeparateDiscontinuousSuperPixel()
 				return false;
 			}
 			newSP->SetWindow(new_box);
+			boundingbox = orig_box;
 
 			// Step 8: Determine which paths (with embedded sub-paths) go with the new SuperPixel.
 			Path* local_path = GetPathHead();

@@ -911,8 +911,8 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 			PointPair corner_location;
 			corner_location.x = -1 + (i & 2);
 			corner_location.y = -1 + ((i + 1) & 2);
-			points[i].x = corner_location.x*(c_value * brush_depth - s_value * brush_width) + location.x;
-			points[i].y = corner_location.y * (c_value * brush_width + s_value * brush_depth) + location.y;
+			points[i].x = corner_location.x * c_value * brush_depth - corner_location.y * s_value * brush_width + location.x;  // *** Is this right, now?
+			points[i].y = corner_location.y * c_value * brush_width + corner_location.x * s_value * brush_depth + location.y;
 		}
 		return ExtinguishQuadrilateral(points, width, height, extinguish_mask, mask_value);
 	}

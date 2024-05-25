@@ -456,10 +456,10 @@ WorkSpace::WorkSpace(std::string filename, int channel, int nchannel, bool d)
 WorkSpace::WorkSpace(std::string sp_filename, bool d)
 {
 
-	data == NULL;
-	image == NULL;
-	gray == NULL;
-	edge == NULL;
+	data = NULL;
+	image = NULL;
+	gray = NULL;
+	edge = NULL;
 
 	diagonals = d;
 	list_head = NULL;
@@ -577,6 +577,70 @@ WorkSpace::WorkSpace(std::string sp_filename, bool d)
 		more = (EOF != ifile.peek());
 	}
 	ifile.close();
+}
+
+WorkSpace::WorkSpace(const WorkSpace& t)  // Copy constructor.  Same size as original, creates copies of all data.
+{
+	width = t.width;
+	height = t.height;
+	colorchannels = t.colorchannels;
+	xdiv = t.xdiv;
+	ydiv = t.ydiv;
+	gray = NULL;
+	temp_gray = NULL;
+	processed_gray = NULL;
+	dilate = NULL;
+	erode = NULL;
+	edge = NULL;
+	data = NULL;
+	data_revised = NULL;
+	data_diff = NULL;
+	image = NULL;
+	pixeldata = NULL;
+	cell = NULL;
+	list_head = NULL;
+	list_tail = NULL;
+	skeleton_head = NULL;
+	skeleton_tail = NULL;
+	skeleton_pixeldata = NULL;
+	processed_head = NULL;
+	processed_tail = NULL;
+	processed_pixeldata = NULL;
+	current = NULL;
+	bbox = t.bbox;
+	diagonals = t.diagonals;
+	palette = NULL;
+	if (NULL != t.list_head)
+	{
+		pixeldata = new SPixelData(*t.list_head->GetPixelData());
+		if (NULL != pixeldata)
+		{
+			list_head = t.list_head->DuplicateSuperPixelSet(pixeldata);
+			list_tail = list_head->GetTail();
+			list_head->UpdateWorkspaceSuperPixelSet(this);
+		}
+	}
+	if (NULL != t.processed_head)
+	{
+		processed_pixeldata = new SPixelData(*t.processed_head->GetPixelData());
+		if (NULL != processed_pixeldata)
+		{
+			processed_head = t.processed_head->DuplicateSuperPixelSet(processed_pixeldata);
+			processed_tail = processed_head->GetTail();
+			processed_head->UpdateWorkspaceSuperPixelSet(this);
+		}
+	}
+	if (NULL != t.skeleton_head)
+	{
+		skeleton_pixeldata = new SPixelData(*t.skeleton_head->GetPixelData());
+		if (NULL != skeleton_pixeldata)
+		{
+			skeleton_head = t.skeleton_head->DuplicateSuperPixelSet(skeleton_pixeldata);
+			skeleton_tail = skeleton_head->GetTail();
+			skeleton_head->UpdateWorkspaceSuperPixelSet(this);
+		}
+	}
+	RecalcSuperPixelSet();
 }
 
 WorkSpace::~WorkSpace()
@@ -1830,7 +1894,7 @@ bool WorkSpace::SimplifySuperPixels(SuperPixel* sp)
 	{
 		processed_tail = processed_head->GetTail();
 	}
-	RecalcSuperPixelSet();
+	RecalcSuperPixelSet();  // *** Here.  This is recalculating using the wrong sp.  Lookups based on id are now wrong. ***
 	return true;
 }
 
@@ -1870,6 +1934,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 //       2=skeleton
 //		 3=painted paths
 //       4=progressive painted paths
+//       44=implementation of progressive painted paths within sub-Workspace (necessary because the implementation of GetByIdentifier requires the list_head or processed_head SuperPixels to be used). Don't call directly.
 // Background: 0=white
 //             1=black
 // glitch1: Create a glitched effect for the straight painted portions.
@@ -2031,40 +2096,45 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 	}
 	else if (4 == mode)
 	{
+		WorkSpace* local_workspace = NULL;
+
+		local_workspace = new WorkSpace(*this);
+		if (NULL == local_workspace)
+		{
+			throw std::runtime_error("Failed to create local workspace.\n");
+			return NULL;
+		}
+
+		ImageData* img = local_workspace->GenerateImage(44, prop);
+
+		delete local_workspace;
+		return img;
+	}
+	else if (44 == mode)  // Should be called only by mode 4 of this same function, but called from the sub-WorkSpace.
+	{
+		SPixelData* extinguish_pixdata = NULL;
 		SPixelData* local_pixdata = NULL;
 		SuperPixel* local_sp = NULL;
-		SPixelData* extinguish_pixdata = NULL;
 		float ave_radius;
 		if (NULL != processed_pixeldata)
 		{
-			extinguish_pixdata = new SPixelData(*processed_pixeldata);
+			local_pixdata = processed_pixeldata;
+			local_sp = processed_head;
 		}
 		else {
-			extinguish_pixdata = new SPixelData(*pixeldata);
+			local_pixdata = pixeldata;
+			local_sp = list_head;
 		}
+		extinguish_pixdata = new SPixelData(*local_pixdata);
 		if (NULL == extinguish_pixdata)
 		{
 			throw std::runtime_error("Failed to allocate memory for extinguish_pixdata for progressive paint.\n");
 			return NULL;
 		}
-		local_pixdata = new SPixelData(*extinguish_pixdata);
-		if (NULL == local_pixdata)
-		{
-			throw std::runtime_error("Failed to allocate memory for local_pixdata for progressive paint.\n");
-			return NULL;
-		}
-		if (NULL != processed_head)
-		{
-			local_sp = processed_head->DuplicateSuperPixelSet(local_pixdata);
-		}
-		else {
-			local_sp = list_head->DuplicateSuperPixelSet(local_pixdata);
-		}
-
 		prop.extinguish_paint = true;  // This will cause extinguish_pixdata to be set to zero where painting has happened.
 		int scale_width = width * prop.paint_scale;
 		int scale_height = height * prop.paint_scale;
-		int count = 5;
+
 		prop.brush_width_override = true;
 		prop.paint_mask = false;
 		//		prop.radius_variation = false;
@@ -2079,11 +2149,23 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		img = new ImageData(img_data, scale_width, scale_height, 3, true);
 		img->SetBackground(bg);
 
+		ImageData* debug_img = NULL;
+		std::string temppath = "";
+		std::string path = "D:\\temp\\debug_";
+
+		int count = 5;
 		while (count > 0)
 		{
 			count--;
 			DeleteSkeleton();
+			debug_img = local_pixdata->GenerateImage(local_sp, bg);
+			temppath = path;
+			temppath.append(std::to_string(5 - count)).append(".png");
+			debug_img->write_file(temppath);
+			delete debug_img;
+
 			ThinSuperPixels(true, prop.glitch3, local_sp, local_pixdata);
+			extinguish_pixdata->CopyData(local_pixdata);
 
 			// Skeleton path painting - only the longest path
 			current = skeleton_head;
@@ -2130,8 +2212,6 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 			}
 			local_pixdata->CopyData(extinguish_pixdata);
 		}
-		DeleteSuperPixelSet(local_sp);
-
 		/*
 		if (prop.outline)  // *** This is not going to work, unless limited to the first run.  ***
 		{
@@ -2163,9 +2243,6 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		}
 		*/
 		img->CollapseWideData(false);
-		DeleteSkeleton();
-		delete(local_pixdata);
-		delete(extinguish_pixdata);
 		return img;
 	}
 	return NULL;

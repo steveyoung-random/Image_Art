@@ -76,6 +76,7 @@ public:
 	bool GenerateContrastImage(SPixelData* pdata, int radius);
 	Color CalculateContrastColor(Color opposing);
 	SuperPixel* DuplicateSuperPixelSet(SPixelData* sd = NULL);
+	bool UpdateWorkspaceSuperPixelSet(WorkSpace* ws);
 	bool DeletePathList();
 
 	Color GetAveColor();
