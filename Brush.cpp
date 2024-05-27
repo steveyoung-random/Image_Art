@@ -880,22 +880,6 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 					}
 				}
 			}
-			//if (extinguish)
-			//{
-			//	for (int i = 0; i < 4; i++)
-			//	{
-			//		FloatPointPair corner_direction;
-			//		corner_direction.x = -1.0 + (i & 2);
-			//		corner_direction.y = -1.0 + ((i + 1) & 2);
-			//		float dist = corner_direction.x * raw_offset.x + corner_direction.y * raw_offset.y;
-			//		if (dist > corner_dist[i])  // This bristle is further in the direction of the corner than previous ones that have been painted in this call to Dab3.
-			//		{
-			//			corner_dist[i] = dist;
-			//			points[i].x = c_value * raw_offset.x - s_value * raw_offset.y + location.x;
-			//			points[i].y = c_value * raw_offset.y + s_value * raw_offset.x + location.y;
-			//		}
-			//	}
-			//}
 		}
 		if (Adjust(gen) < 0.1)
 		{
@@ -909,10 +893,21 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 		for (int i = 0; i < 4; i++)
 		{
 			PointPair corner_location;
+			float mod_brush_width = brush_width - 5.0;
+			if (mod_brush_width < 5.0)
+			{
+				if (brush_width > 5.0)
+				{
+					mod_brush_width = 5.0;
+				}
+				else {
+					mod_brush_width = brush_width;
+				}
+			}
 			corner_location.x = -1 + (i & 2);
 			corner_location.y = -1 + ((i + 1) & 2);
-			points[i].x = corner_location.x * c_value * brush_depth - corner_location.y * s_value * brush_width + location.x;  // *** Is this right, now?
-			points[i].y = corner_location.y * c_value * brush_width + corner_location.x * s_value * brush_depth + location.y;
+			points[i].x = corner_location.x * c_value * brush_depth - corner_location.y * s_value * mod_brush_width + location.x;
+			points[i].y = corner_location.y * c_value * mod_brush_width + corner_location.x * s_value * brush_depth + location.y;
 		}
 		return ExtinguishQuadrilateral(points, width, height, extinguish_mask, mask_value);
 	}
