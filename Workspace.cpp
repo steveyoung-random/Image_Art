@@ -2149,20 +2149,11 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		img = new ImageData(img_data, scale_width, scale_height, 3, true);
 		img->SetBackground(bg);
 
-		//ImageData* debug_img = NULL;
-		//std::string temppath = "";
-		//std::string path = "D:\\temp\\debug_";
-
 		int count = 5;
 		while (count > 0)
 		{
 			count--;
 			DeleteSkeleton();
-			//debug_img = local_pixdata->GenerateImage(local_sp, bg);
-			//temppath = path;
-			//temppath.append(std::to_string(5 - count)).append(".png");
-			//debug_img->write_file(temppath);
-			//delete debug_img;
 
 			ThinSuperPixels(true, prop.glitch3, local_sp, local_pixdata);
 			extinguish_pixdata->CopyData(local_pixdata);

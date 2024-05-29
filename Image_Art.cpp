@@ -812,7 +812,7 @@ int main(int argc, char** argv)
 			}
 			if (1 == (file_output & 1))
 			{
-				workspace->ThinSuperPixels(false, prop.glitch3);
+  				workspace->ThinSuperPixels(false, prop.glitch3);
 				data_revised = workspace->GenerateImage(2, prop);
 				temppath = path;
 				temppath.append(OUTPUT).append("_skeleton");

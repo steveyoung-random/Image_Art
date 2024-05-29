@@ -554,7 +554,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 	if (1 == skeleton_point_set.size())
 	{
 		bool has_link = false;
-		for (int i = 0; (i < 8)&&(!has_link); ++i)
+		for (int i = 0; (i < 8) && (!has_link); ++i)
 		{
 			point_it = skeleton_point_set.begin();
 			if (NULL != point_it->sp->dir[i])
@@ -609,16 +609,31 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 							else {
 								other_end = GetSPByIdentifier(local_link->end1);
 							}
-							if (other_end->temp_dist < 0)
+							if ((other_end->temp_dist < 0) ||
+								((local_lead->temp_dist + local_link->distance) < other_end->temp_dist))
 							{
 								other_end->temp_dist = local_lead->temp_dist + local_link->distance;
 								new_leads.push_back(other_end->point);
 							}
-							else if ((local_lead->temp_dist + local_link->distance) < other_end->temp_dist)
+							else if ((local_lead == other_end) && (other_end->temp_dist == 0))
 							{
 								other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-								new_leads.push_back(other_end->point);
 							}
+							//if (other_end->temp_dist < 0)
+							//{
+							//	other_end->temp_dist = local_lead->temp_dist + local_link->distance;
+							//	new_leads.push_back(other_end->point);
+							//}
+							//else if ((local_lead->temp_dist + local_link->distance) < other_end->temp_dist)
+							//{
+							//	other_end->temp_dist = local_lead->temp_dist + local_link->distance;
+							//	new_leads.push_back(other_end->point);
+							//}
+							//else if ((local_lead == other_end) && (other_end->temp_dist == 0))
+							//{
+							//	other_end->temp_dist = local_lead->temp_dist + local_link->distance;
+							//	new_leads.push_back(other_end->point);
+							//}
 						}
 					}
 				}
@@ -650,7 +665,9 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 				link_path.clear();  // Reset link_path.
 				long_path.push_back(local_end);
 				long_path_dist = local_distance;
-				while (local_end != sp->point)
+				bool first_link = (local_end == sp->point); // True if link goes to the same point on both ends.
+
+				while ((local_end != sp->point) || first_link)
 				{
 					int i = FindDirSmallestTempDist(far_sp);
 					if (i < 0)
@@ -677,7 +694,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 						{
 							line_index = line_size - 2;
 						}
-						while (long_path[0] != local_lead_pos)
+						while ((long_path[0] != local_lead_pos) || first_link)
 						{
 							long_path.insert(long_path.begin(), far_sp->dir[i]->line[line_index]);
 							if (reverse)
@@ -692,6 +709,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 								throw std::runtime_error("Failed to find next point in skeleton line segment.\n");
 								return false;
 							}
+							first_link = false;
 						}
 					}
 					else {
@@ -700,6 +718,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 					local_distance = local_lead->temp_dist;
 					local_end = local_lead_pos;
 					far_sp = GetSPByIdentifier(local_end);
+					first_link = false;
 				}
 			}
 		}
@@ -745,7 +764,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 			}
 			if (just_one)
 			{
-				return true;
+				return true;  // *** Here.  This skips the next part where orphaned links are picked up. ***
 			}
 		}
 		else {
