@@ -583,7 +583,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 			// First part is to popluate all temp_dist values with shortest distances from point_it->sp.
 			ResetTempDists();  // Set all temp_dist values to -1 (so we know they have not been visted yet).
 			sp = point_it->sp;
-			sp->temp_dist = 0.0;
+			sp->temp_dist = 0.0f;
 			leads.clear();
 			new_leads.clear();
 			new_leads.push_back(sp->point);
@@ -615,25 +615,6 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 								other_end->temp_dist = local_lead->temp_dist + local_link->distance;
 								new_leads.push_back(other_end->point);
 							}
-							else if ((local_lead == other_end) && (other_end->temp_dist == 0))
-							{
-								other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-							}
-							//if (other_end->temp_dist < 0)
-							//{
-							//	other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-							//	new_leads.push_back(other_end->point);
-							//}
-							//else if ((local_lead->temp_dist + local_link->distance) < other_end->temp_dist)
-							//{
-							//	other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-							//	new_leads.push_back(other_end->point);
-							//}
-							//else if ((local_lead == other_end) && (other_end->temp_dist == 0))
-							//{
-							//	other_end->temp_dist = local_lead->temp_dist + local_link->distance;
-							//	new_leads.push_back(other_end->point);
-							//}
 						}
 					}
 				}
@@ -641,12 +622,25 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 			// Now go through all points to find the one with the longest distance.
 			float local_distance = 0.0;
 			int local_end = sp->point;
+			float near_loop = 0.0f; // Distance of longest loopback (if any) from the near point back to itself.
+			int near_loop_dir = FindDirLongestLoop(sp); // Direction of loopback link for near point.
+			if (near_loop_dir > -1)
+			{
+				near_loop = sp->dir[near_loop_dir]->distance;
+			}
+
 			for (far_point_it = skeleton_point_set.begin(); far_point_it != skeleton_point_set.end(); ++far_point_it)
 			{
 				far_sp = far_point_it->sp;
-				if (far_sp->temp_dist > local_distance)
+				float far_loop = 0.0f; // Distance of longest loopback (if any) from far point back to itself.
+				int far_loop_dir = FindDirLongestLoop(far_sp);  // Direction of loopback link for far point.
+				if (far_loop_dir > -1)
 				{
-					local_distance = far_sp->temp_dist;
+					far_loop = far_sp->dir[far_loop_dir]->distance;
+				}
+				if ((far_sp->temp_dist >= 0.0f) && ((far_sp->temp_dist + near_loop + far_loop) > local_distance))
+				{
+					local_distance = far_sp->temp_dist + near_loop + far_loop;  // Distance includes loopbacks at either or both ends.
 					local_end = far_sp->point;
 				}
 			}
@@ -665,9 +659,22 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 				link_path.clear();  // Reset link_path.
 				long_path.push_back(local_end);
 				long_path_dist = local_distance;
-				bool first_link = (local_end == sp->point); // True if link goes to the same point on both ends.
-
-				while ((local_end != sp->point) || first_link)
+				int local_loop_dir = FindDirLongestLoop(far_sp);
+				if (false == (local_end == sp->point))  // Skip the loop at the far end if there is only a single link -- it gets picked up later.
+				{
+					if (local_loop_dir > -1)
+					{
+						Skeleton_Link* loop_link = far_sp->dir[local_loop_dir];
+						int link_line_size = loop_link->line.size();
+						local_lead = far_sp;
+						for (int line_index = 1; line_index < link_line_size; ++line_index)  // No attempt is made to optimize for direction.
+						{
+							long_path.insert(long_path.begin(), loop_link->line[line_index]);
+						}
+						link_path.insert(loop_link);
+					}
+				}
+				while (local_end != sp->point)
 				{
 					int i = FindDirSmallestTempDist(far_sp);
 					if (i < 0)
@@ -694,7 +701,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 						{
 							line_index = line_size - 2;
 						}
-						while ((long_path[0] != local_lead_pos) || first_link)
+						while (long_path[0] != local_lead_pos)
 						{
 							long_path.insert(long_path.begin(), far_sp->dir[i]->line[line_index]);
 							if (reverse)
@@ -709,7 +716,6 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 								throw std::runtime_error("Failed to find next point in skeleton line segment.\n");
 								return false;
 							}
-							first_link = false;
 						}
 					}
 					else {
@@ -718,7 +724,18 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 					local_distance = local_lead->temp_dist;
 					local_end = local_lead_pos;
 					far_sp = GetSPByIdentifier(local_end);
-					first_link = false;
+				}
+				local_loop_dir = FindDirLongestLoop(far_sp);  // If there is a loop at the sp point, then add that path here.
+				if (local_loop_dir > -1)
+				{
+					Skeleton_Link* loop_link = far_sp->dir[local_loop_dir];
+					int link_line_size = loop_link->line.size();
+					local_lead = far_sp;
+					for (int line_index = 1; line_index < link_line_size; ++line_index)  // No attempt is made to optimize for direction.
+					{
+						long_path.insert(long_path.begin(), loop_link->line[line_index]);
+					}
+					link_path.insert(loop_link);
 				}
 			}
 		}
@@ -747,7 +764,7 @@ bool SkeletonPointCollection::FindLongestPaths(bool just_one)
 							if ((NULL != sp->dir[i]) && (false == sp->dir[i]->used_in_long_path))
 							{
 								if (((sp->dir[i]->end1 == prev) && (sp->dir[i]->end2 == *it)) ||
-									((sp->dir[i]->end2 == prev) && (sp->dir[i]->end1 == *it)))
+									((sp->dir[i]->end2 == prev) && (sp->dir[i]->end1 == *it)))  // *** Need to update this logic to account for end loops.
 								{
 									std::set<Skeleton_Link*>::iterator find_it;
 									find_it = link_path.find(sp->dir[i]);
@@ -893,7 +910,7 @@ bool SkeletonPointCollection::RecalcDistances()
 int SkeletonPointCollection::FindDirSmallestTempDist(Skeleton_Point* sp)
 {
 	// Using sp, look at all non-NULL links to it, which have not already been used in a long path, and find the one that leads to the smallest temp_dist.
-	int ret = -1;
+	int ret = -1;  // A return value of -1 means none found.
 	float smallest = -1.0;
 	int pos = sp->point;
 	int other_pos = -1;
@@ -914,7 +931,7 @@ int SkeletonPointCollection::FindDirSmallestTempDist(Skeleton_Point* sp)
 			if ((smallest < 0.0) || (other_sp->temp_dist < smallest))
 			{
 				smallest = other_sp->temp_dist;
-				ret = i;
+				ret = i;  // *** I think this is unused, since it is set below for any circumstance where ret_pos > -1.  Confirm, then delete the line.
 				ret_pos = other_pos;
 			}
 		}
@@ -942,6 +959,32 @@ int SkeletonPointCollection::FindDirSmallestTempDist(Skeleton_Point* sp)
 		}
 	}
 
+	return ret;
+}
+
+int SkeletonPointCollection::FindDirLongestLoop(Skeleton_Point* sp)
+{
+	// Using sp, look at all non-NULL links to it, which have not already been used in a long path, and find the one (if any) that is the longest loop back to the same point.
+	int ret = -1;  // A return value of -1 means none found.
+	int pos = sp->point;
+	float longest_distance = 0.0;
+	Skeleton_Link* link = NULL;
+
+	for (int i = 0; i < 8; ++i)
+	{
+		link = sp->dir[i];
+		if ((NULL != link) && (false == link->used_in_long_path))
+		{
+			if ((link->end1 == pos) && (link->end2 == pos))
+			{
+				if (link->distance > longest_distance)
+				{
+					ret = i;
+					longest_distance = link->distance;
+				}
+			}
+		}
+	}
 	return ret;
 }
 

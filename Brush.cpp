@@ -893,7 +893,7 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 		for (int i = 0; i < 4; i++)
 		{
 			PointPair corner_location;
-			float mod_brush_width = brush_width - 5.0;
+			float mod_brush_width = brush_width - 2.5;
 			if (mod_brush_width < 5.0)
 			{
 				if (brush_width > 5.0)

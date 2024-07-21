@@ -67,6 +67,7 @@ public:
 	bool FindLongestPaths(bool just_one = false);
 	bool RecalcDistances();
 	int FindDirSmallestTempDist(Skeleton_Point* sp);
+	int FindDirLongestLoop(Skeleton_Point* sp);
 	bool AddSkeletonEndpoint(PointPair p);
 	bool AddSkeletonIntersection(PointPair p);
 	std::set<int> GetEndpoints();
