@@ -74,13 +74,30 @@ bool Bristle::SetBristleDown(bool d)
 	return true;
 }
 
-Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_Properties prop)
+Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_Properties prop, Paper* paper, int pigment_index)
 {
 	paint_prop = prop;
 	location = start;
 	color = c;
 	second = sec;
 	bristle_kernel = NULL;
+	watercolor = prop.watercolor;
+	watercolor_paper = paper;
+	watercolor_pigment_index = pigment_index;
+
+	if (watercolor)
+	{
+		if (NULL == watercolor_paper)
+		{
+			throw std::runtime_error("Called Brush constructor for watercolor with NULL paper pointer.\n");
+			return;
+		}
+		if (pigment_index < 0)
+		{
+			Pigment* pgmnt = new Pigment(watercolor_paper->GetWidth(), watercolor_paper->GetHeight(), &color, 0.2, 0.09, 1.0, 0.41);
+			watercolor_pigment_index = watercolor_paper->SetPigment(pgmnt);
+		}
+	}
 
 	if (paint_prop.brush_width_override)
 	{
@@ -236,107 +253,6 @@ bool Brush::MoveTo(FloatPointPair loc)
 	return true;
 }
 
-bool Brush::PaintTo(FloatPointPair loc, float* data, int width, int height, SPixelData* mask, int mask_value, float rad1, float rad2)
-{
-	FloatPointPair p1, p2, p_temp;
-	float gradient;
-	float dr;
-	float r1 = rad1;
-	float r2 = rad2;
-	float curve_adjustment = paint_prop.paint_scale;
-	if (paint_prop.glitch1)
-	{
-		curve_adjustment = paint_prop.paint_scale;
-	}
-	float flow_adjustment = 1.0f / curve_adjustment;
-
-	if (false == paint_prop.radius_variation)
-	{
-		rad1 = -1;
-		rad2 = -1;
-	}
-	if (rad1 < 0)
-	{
-		if (rad2 < 0)
-		{
-			r1 = brush_width;
-		}
-		else {
-			r1 = rad2;
-		}
-	}
-	if (rad2 < 0)
-	{
-		if (rad1 < 0)
-		{
-			r2 = brush_width;
-		}
-		else {
-			r2 = rad1;
-		}
-	}
-	int iterations;
-	FloatPointPair current_location;
-	p1 = location;
-	p2 = loc;
-	if ((p1.x == p2.x) && (p1.y == p2.y))
-	{
-		Dab2(data, width, height, mask, mask_value, -1.0, 1.0);
-		return true;
-	}
-	SetOrientation({ p2.x - p1.x , p2.y - p1.y });
-	bool steep = (abs(p1.y - p2.y) > abs(p1.x - p2.x));
-	if (steep)
-	{
-		if (p1.y > p2.y)
-		{
-			p_temp = p1;
-			p1 = p2;
-			p2 = p_temp;
-			dr = r1;
-			r1 = r2;
-			r2 = dr;
-		}
-		gradient = (float)(p2.x - p1.x) / (float)((p2.y - p1.y) * curve_adjustment);
-		dr = (float)(r2 - r1) / (float)((p2.y - p1.y) * curve_adjustment);
-		iterations = (p2.y - p1.y) * curve_adjustment;
-	}
-	else {
-		if (p1.x > p2.x)
-		{
-			p_temp = p1;
-			p1 = p2;
-			p2 = p_temp;
-			dr = r1;
-			r1 = r2;
-			r2 = dr;
-		}
-		gradient = (float)(p2.y - p1.y) / (float)((p2.x - p1.x) * curve_adjustment);
-		dr = (float)(r2 - r1) / (float)((p2.x - p1.x) * curve_adjustment);
-		iterations = (p2.x - p1.x) * curve_adjustment;
-	}
-	current_location = p1;
-	MoveTo(current_location);
-	Dab2(data, width, height, mask, mask_value, r1, flow_adjustment);
-	for (int i = 0; i < iterations; ++i)
-	{
-		if (steep)
-		{
-			current_location.y = current_location.y + flow_adjustment;
-			current_location.x = current_location.x + gradient;
-		}
-		else {
-			current_location.x = current_location.x + flow_adjustment;
-			current_location.y = current_location.y + gradient;
-		}
-		r1 += dr;
-		MoveTo(current_location);
-		Dab2(data, width, height, mask, mask_value, r1, flow_adjustment);
-	}
-	MoveTo(loc);
-	return true;
-}
-
 bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, float rad1, float rad2, bool begin, SPixelData* extinguish_mask)
 {
 	FloatPointPair p1 = { 0, 0 }, p_temp = { 0, 0 }, direction = { 0, 0 };
@@ -458,7 +374,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	if (!use_mask)
 	{
 		mask = NULL;
-//		mask_value = 0;
+		//		mask_value = 0;
 	}
 
 	Dab3(direction, data, width, height, mask, mask_value, r1, begin, extinguish_mask);
@@ -498,227 +414,6 @@ bool Brush::ChangeColor(Color c, Color sec)
 {
 	color = c;
 	second = sec;
-	return true;
-}
-
-bool Brush::Dab(unsigned char* data, int width, int height)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-
-	std::uniform_real_distribution<> Adjust(0, 1);
-	std::uniform_int_distribution<> Adjust_x(-1, 1);
-	std::uniform_int_distribution<> Adjust_y(-1, 1);
-
-	Bristle* bristle;
-	int count = 0;
-	for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
-	{
-		count++;
-		Color bristle_color;
-		if (0 == count % 50)
-		{
-			bristle_color = second;
-		}
-		else {
-			bristle_color = color;
-		}
-		bristle = *it;
-		FloatPointPair offset = bristle->GetOffset();
-		int x = location.x + offset.x;
-		int y = location.y + offset.y;
-		float flow_diff = bristle->GetFlowDiff();
-		float channels[3] = { 0, 0, 0 };
-
-		if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				long pos = y * width * 3 + x * 3 + i;
-				if (data[pos] > bristle_color.channel[i]) // Brighter background
-				{
-					//					channels[i] = ((float)data[pos] - (flow_diff + flow) * (float)bristle_color.channel[i]) / 100.0 + (float)data[pos];
-					channels[i] = ((flow_diff + paint_prop.flow) * (float)bristle_color.channel[i] + (100 - flow_diff - paint_prop.flow) * (float)data[pos]) / 100.0f;
-					if (channels[i] < bristle_color.channel[i])
-					{
-						data[pos] = bristle_color.channel[i];
-					}
-					else if (channels[i] > 255)
-					{
-						data[pos] = 255;
-					}
-					else {
-						data[pos] = (unsigned char)channels[i];
-					}
-				}
-				else { // Dimmer background
-					//					channels[i] = ((float)data[pos] + (flow_diff + flow) * (float)bristle_color.channel[i]) / 100.0 + (float)data[pos];
-					channels[i] = ((flow_diff + paint_prop.flow) * (float)bristle_color.channel[i] + (100 - flow_diff - paint_prop.flow) * (float)data[pos]) / 100.0f;
-					if (channels[i] < 0)
-					{
-						data[pos] = 0;
-					}
-					else if (channels[i] > bristle_color.channel[i])
-					{
-						data[pos] = bristle_color.channel[i];
-					}
-					else {
-						data[pos] = (unsigned char)channels[i];
-					}
-				}
-			}
-		}
-		if (Adjust(gen) < 0.1)
-		{
-			FloatPointPair offset = bristle->GetOffset();
-			if (offset.x * offset.x + offset.y * offset.y > brush_width * brush_width * 0.95)
-			{
-				if (offset.x > 0)
-				{
-					--offset.x;
-				}
-				else {
-					++offset.x;
-				}
-				if (offset.y > 0)
-				{
-					--offset.y;
-				}
-				else {
-					++offset.y;
-				}
-			}
-			else {
-				offset.x += Adjust_x(gen);
-				offset.y += Adjust_y(gen);
-			}
-
-			bristle->AdjustOffset(offset);
-		}
-	}
-	return true;
-}
-
-bool Brush::Dab2(float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, float flow_adjustment)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-
-	std::uniform_real_distribution<> Adjust(0, 1);
-	std::uniform_int_distribution<> Adjust_x(-1, 1);
-	std::uniform_int_distribution<> Adjust_y(-1, 1);
-
-	Bristle* bristle;
-	FloatPointPair oriented_location = { 0, 0 };
-	FloatPointPair raw_oriented_location = { 0, 0 };
-	float c_value = cos(orientation);
-	float s_value = sin(orientation);
-	int mask_width = mask->GetWidth();
-	int mask_height = mask->GetHeight();
-
-	int count = 0;
-	for (std::vector<Bristle*>::iterator it = bristles.begin(); it != bristles.end(); ++it)
-	{
-		count++;
-		Color bristle_color;
-		if (0 == count % 50)
-		{
-			bristle_color = second;
-		}
-		else {
-			bristle_color = color;
-		}
-		bristle = *it;
-		FloatPointPair offset = bristle->GetOffset();
-		oriented_location.x = paint_prop.paint_scale * (c_value * offset.x - s_value * offset.y);
-		oriented_location.y = paint_prop.paint_scale * (c_value * offset.y + s_value * offset.x);
-		FloatPointPair raw_offset = bristle->GetUnadjustedOffset();
-		float x = c_value * raw_offset.x - s_value * raw_offset.y + location.x;
-		float y = c_value * raw_offset.y + s_value * raw_offset.x + location.y;
-		if ((NULL == mask) || ((x >= 0) && (x < mask_width) && (y >= 0) && (y < mask_height) && (mask_value == mask->GetPixel(x, y))))
-		{
-			float flow_diff = bristle->GetFlowDiff();
-			float channels[3] = { 0, 0, 0 };
-
-			if ((spot_radius < 0) || ((oriented_location.x * oriented_location.x + oriented_location.y * oriented_location.y) < (spot_radius * spot_radius * paint_prop.paint_scale * paint_prop.paint_scale)))
-			{
-				for (int i = -2; i <= 2; ++i)
-				{
-					for (int j = -2; j <= 2; ++j)
-					{
-						float adjustment;
-
-
-						x = paint_prop.paint_scale * location.x + oriented_location.x + i;
-						y = paint_prop.paint_scale * location.y + oriented_location.y + j;
-						if (paint_prop.sub_pixel)
-						{
-							adjustment = flow_adjustment * KernelAdjustment(i, j, x, y);
-						}
-						else {
-							adjustment = flow_adjustment * bristle_kernel[abs(i)][abs(j)];
-						}
-
-						float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
-						if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
-						{
-							for (int color_index = 0; color_index < 3; ++color_index)
-							{
-								long pos = (int)y * width * 3 + (int)x * 3 + color_index;
-								if (data[pos] > bristle_color.channel[color_index]) // Brighter background
-								{
-									channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100 - adjusted_flow) * (float)data[pos]) / 100.0f;
-									if (channels[color_index] < bristle_color.channel[color_index])
-									{
-										data[pos] = bristle_color.channel[color_index];
-									}
-									else if (channels[color_index] > 255)
-									{
-										data[pos] = 255;
-									}
-									else {
-										if (paint_prop.glitch2)
-										{
-											data[pos] = (float)((unsigned char)channels[color_index]);
-										}
-										else {
-											data[pos] = channels[color_index];
-										}
-									}
-								}
-								else { // Dimmer background
-									channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100 - adjusted_flow) * (float)data[pos]) / 100.0f;
-									if (channels[color_index] < 0)
-									{
-										data[pos] = 0;
-									}
-									else if (channels[color_index] > bristle_color.channel[color_index])
-									{
-										data[pos] = bristle_color.channel[color_index];
-									}
-									else {
-										if (paint_prop.glitch2)
-										{
-											data[pos] = (float)((unsigned char)channels[color_index]);
-										}
-										else {
-											data[pos] = channels[color_index];
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		if (Adjust(gen) < 0.1)
-		{
-			offset.x = Adjust_x(gen);
-			offset.y = Adjust_y(gen);
-			bristle->AdjustWander(offset);
-		}
-	}
 	return true;
 }
 
@@ -832,47 +527,53 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 					float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
 					if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
 					{
-						for (int color_index = 0; color_index < 3; ++color_index)
+						if (watercolor)
 						{
-							long pos = (int)y * width * 3 + (int)x * 3 + color_index;
-							if (data[pos] > bristle_color.channel[color_index]) // Brighter background
+							watercolor_paper->Dab((int)x, (int)y, 10, 0.004, adjusted_flow / 65000.0, watercolor_pigment_index);
+						}
+						else {
+							for (int color_index = 0; color_index < 3; ++color_index)
 							{
-								channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100.0f - adjusted_flow) * (float)data[pos]) / 100.0f;
-								if (channels[color_index] < bristle_color.channel[color_index])
+								long pos = (int)y * width * 3 + (int)x * 3 + color_index;
+								if (data[pos] > bristle_color.channel[color_index]) // Brighter background
 								{
-									data[pos] = bristle_color.channel[color_index];
-								}
-								else if (channels[color_index] > 255)
-								{
-									data[pos] = 255;
-								}
-								else {
-									if (paint_prop.glitch2)
+									channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100.0f - adjusted_flow) * (float)data[pos]) / 100.0f;
+									if (channels[color_index] < bristle_color.channel[color_index])
 									{
-										data[pos] = (float)((unsigned char)channels[color_index]);
+										data[pos] = bristle_color.channel[color_index];
+									}
+									else if (channels[color_index] > 255)
+									{
+										data[pos] = 255;
 									}
 									else {
-										data[pos] = channels[color_index];
+										if (paint_prop.glitch2)
+										{
+											data[pos] = (float)((unsigned char)channels[color_index]);
+										}
+										else {
+											data[pos] = channels[color_index];
+										}
 									}
 								}
-							}
-							else { // Dimmer background
-								channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100.0f - adjusted_flow) * (float)data[pos]) / 100.0f;
-								if (channels[color_index] < 0)
-								{
-									data[pos] = 0;
-								}
-								else if (channels[color_index] > bristle_color.channel[color_index])
-								{
-									data[pos] = bristle_color.channel[color_index];
-								}
-								else {
-									if (paint_prop.glitch2)
+								else { // Dimmer background
+									channels[color_index] = (adjusted_flow * (float)bristle_color.channel[color_index] + (100.0f - adjusted_flow) * (float)data[pos]) / 100.0f;
+									if (channels[color_index] < 0)
 									{
-										data[pos] = (float)((unsigned char)channels[color_index]);
+										data[pos] = 0;
+									}
+									else if (channels[color_index] > bristle_color.channel[color_index])
+									{
+										data[pos] = bristle_color.channel[color_index];
 									}
 									else {
-										data[pos] = channels[color_index];
+										if (paint_prop.glitch2)
+										{
+											data[pos] = (float)((unsigned char)channels[color_index]);
+										}
+										else {
+											data[pos] = channels[color_index];
+										}
 									}
 								}
 							}
@@ -910,48 +611,6 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 			points[i].y = corner_location.y * c_value * mod_brush_width + corner_location.x * s_value * brush_depth + location.y;
 		}
 		return ExtinguishQuadrilateral(points, width, height, extinguish_mask, mask_value);
-	}
-	return true;
-}
-
-bool Brush::PaintCorner(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool variable_radius)
-{
-	float chord_length = sqrt((corner.p0.x - corner.p1.x) * (corner.p0.x - corner.p1.x) + (corner.p0.y - corner.p1.y) * (corner.p0.y - corner.p1.y));
-	float leg1 = sqrt((corner.p0.x - corner.c0.x) * (corner.p0.x - corner.c0.x) + (corner.p0.y - corner.c0.y) * (corner.p0.y - corner.c0.y));
-	float leg2 = sqrt((corner.c1.x - corner.c0.x) * (corner.c1.x - corner.c0.x) + (corner.c1.y - corner.c0.y) * (corner.c1.y - corner.c0.y));
-	float leg3 = sqrt((corner.p1.x - corner.c1.x) * (corner.p1.x - corner.c1.x) + (corner.p1.y - corner.c1.y) * (corner.p1.y - corner.c1.y));
-	float length_est = paint_prop.paint_scale * (chord_length + leg1 + leg2 + leg3) / 2.0f;
-	float local_radius = -1;
-	float dr = 0;
-	FloatPointPair L1 = { 0, 0 }, L2 = { 0, 0 }, L3 = { 0, 0 }, M1 = { 0, 0 }, M2 = { 0, 0 }, N1 = { 0, 0 };
-	float flow_adjustment = 1.0f / (float)(CURVE_ADJUSTMENT * paint_prop.paint_scale);
-
-	int n = (int)length_est * CURVE_ADJUSTMENT + 1;
-	if (variable_radius)
-	{
-		local_radius = corner.radius_p0;
-		dr = (corner.radius_p1 - corner.radius_p0) / (float)n;
-	}
-	for (int i = 0; i < n; ++i)
-	{
-		float p = (float)i / (float)n; // Parameter goes from 0 to 1.0;
-		float np = 1.0f - p;
-		L1.x = corner.c0.x * p + corner.p0.x * np;
-		L1.y = corner.c0.y * p + corner.p0.y * np;
-		L2.x = corner.c1.x * p + corner.c0.x * np;
-		L2.y = corner.c1.y * p + corner.c0.y * np;
-		L3.x = corner.p1.x * p + corner.c1.x * np;
-		L3.y = corner.p1.y * p + corner.c1.y * np;
-		M1.x = L2.x * p + L1.x * np;
-		M1.y = L2.y * p + L1.y * np;
-		M2.x = L3.x * p + L2.x * np;
-		M2.y = L3.y * p + L2.y * np;
-		N1.x = M2.x * p + M1.x * np;
-		N1.y = M2.y * p + M1.y * np;
-		MoveTo(N1);
-		SetOrientation({ M2.x - M1.x, M2.y - M1.y });
-		Dab2(data, width, height, mask, mask_value, local_radius, flow_adjustment);
-		local_radius += dr;
 	}
 	return true;
 }

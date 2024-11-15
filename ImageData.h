@@ -7,6 +7,7 @@
 #include "stb_image_write.h"
 #include "General.h"
 #include "Brush.h"
+#include "Paper.h"
 #include <sstream>
 #include <string>
 
@@ -21,12 +22,14 @@ private:
 	float* data_wide;
 	int width, height, colorchannels;
 	Brush* brush;
+	Paper* paper;
+	Color background_color;
 public:
-	ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values=false);
+	ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values, bool watercolor=false);
 	~ImageData();
 	Color GetPixel(int x, int y);
 	bool CollapseWideData(bool dither = false);
-	bool CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop);
+	bool CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop, int pigment_index = -1);
 	bool PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask_value, bool use_mask=false, SPixelData* extinguish_mask = NULL);
 	unsigned char* GetData();
 	int GetWidth();
@@ -36,6 +39,9 @@ public:
 	bool Reset();
 	bool SetBackground(Color c);
 	bool write_file(std::string filename);
+	bool ProcessWatercolor();
+	bool RenderWatercolor();
+	Paper* GetPaper();
 
 	GradData* gen_gray(int channel = 0, int nchannel = 0);
 	GradData* gen_diff(ImageData* image2);

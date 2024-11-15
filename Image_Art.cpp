@@ -601,7 +601,7 @@ int main(int argc, char** argv)
 				throw (std::runtime_error("Unable to load image.\n"));
 			}
 
-			image = new ImageData(data, width, height, colorchannels);
+			image = new ImageData(data, width, height, colorchannels, false);
 			if (NULL == image)
 			{
 				throw (std::runtime_error("Failed to create ImageData object.\n"));
@@ -684,7 +684,7 @@ int main(int argc, char** argv)
 				throw (std::runtime_error("Unable to load image.\n"));
 			}
 
-			image = new ImageData(data, width, height, colorchannels);
+			image = new ImageData(data, width, height, colorchannels, false);
 			if (NULL == image)
 			{
 				throw (std::runtime_error("Failed to create ImageData object.\n"));
@@ -1104,7 +1104,7 @@ int main(int argc, char** argv)
 	}
 	catch (...)
 	{
-		std::cout << "Unhandled exception.\n";
+		std::cout << "Unhandled exception in main.\n";
 		exit(1);
 	}
 }

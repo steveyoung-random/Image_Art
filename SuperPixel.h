@@ -98,6 +98,7 @@ public:
 	int GetPrevSize();
 	PointPair GetSeed();
 	int GetSize();
+	int GetSetSize();
 	SuperPixel* GetTail();
 	SuperPixelType GetType();
 	RectQuad GetWindow();

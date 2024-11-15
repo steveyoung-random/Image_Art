@@ -6,12 +6,17 @@
 #include "SPixelData.h"
 #include "SuperPixel.h"
 
-ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values)
+ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values, bool watercolor)
 {
 	width = w;
 	height = h;
 	colorchannels = n;
 	brush = NULL;
+	// Start with white background color.
+	background_color.channel[0] = 255;
+	background_color.channel[1] = 255;
+	background_color.channel[2] = 255;
+
 	data = (unsigned char*)malloc(sizeof(unsigned char) * width * height * colorchannels);
 	if (NULL == data)
 	{
@@ -46,6 +51,13 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 			}
 		}
 	}
+	if (watercolor)
+	{
+		paper = new Paper(width, height, background_color, saturation_dry_value);
+	}
+	else {
+		paper = NULL;
+	}
 }
 
 ImageData::~ImageData()
@@ -61,6 +73,10 @@ ImageData::~ImageData()
 	if (NULL != brush)
 	{
 		delete(brush);
+	}
+	if (NULL != paper)
+	{
+		delete(paper);
 	}
 }
 
@@ -125,14 +141,20 @@ bool ImageData::CollapseWideData(bool dither)
 	return true;
 }
 
-bool ImageData::CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop)
+bool ImageData::CreateBrush(FloatPointPair start, Color c, Color sec, int r, Paint_Properties prop, int pigment_index)
 {
+	bool ret = true;
 	if (NULL != brush)
 	{
 		delete(brush);
 	}
-	brush = new Brush(start, c, sec, r, 10, prop);
-	return true;
+	brush = new Brush(start, c, sec, r, 10, prop, paper, pigment_index);
+	if (NULL == brush)
+	{
+		throw std::runtime_error("Failed to create Brush in ImageData::CreateBrush function.\n");
+		ret = false;
+	}
+	return ret;
 }
 
 bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask_value, bool use_mask, SPixelData* extinguish_mask)
@@ -278,6 +300,7 @@ bool ImageData::Reset()
 bool ImageData::SetBackground(Color c)
 {
 	int max_pos = width * height;
+	background_color = c;
 	for (int pos = 0; pos < max_pos; pos++)
 	{
 		for (int i = 0; i < colorchannels; i++)
@@ -291,6 +314,10 @@ bool ImageData::SetBackground(Color c)
 				data_wide[pos * colorchannels + i] = c.channel[i];
 			}
 		}
+	}
+	if (NULL != paper)
+	{
+		paper->SetBackgroundColor(background_color);
 	}
 	return true;
 }
@@ -307,6 +334,39 @@ bool ImageData::write_file(std::string filename)
 	}
 
 	return true;
+}
+
+bool ImageData::ProcessWatercolor()
+{
+	bool ret = true;
+	if (NULL == paper)
+	{
+		throw std::runtime_error("ProcessWatercolor called without pointer to Paper in ImageData.\n");
+		ret = false;
+	}
+	else {
+		ret = paper->Process(false);
+	}
+	return ret;
+}
+
+bool ImageData::RenderWatercolor()
+{
+	bool ret = true;
+	if (NULL == paper)
+	{
+		throw std::runtime_error("Called RenderWaterColor with no point to Paper in ImageData.\n");
+		ret = false;
+	}
+	else {
+		paper->Render(data);
+	}
+	return ret;
+}
+
+Paper* ImageData::GetPaper()
+{
+	return paper;
 }
 
 GradData* ImageData::gen_gray(int channel, int nchannel)

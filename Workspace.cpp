@@ -442,7 +442,7 @@ WorkSpace::WorkSpace(std::string filename, int channel, int nchannel, bool d)
 		throw (std::runtime_error("Unable to load image.\n"));
 	}
 
-	image = new ImageData(data, width, height, colorchannels);
+	image = new ImageData(data, width, height, colorchannels, false);
 	if (NULL == image)
 	{
 		throw (std::runtime_error("Failed to create ImageData object.\n"));
@@ -902,7 +902,7 @@ bool WorkSpace::SetAveColors()
 	{
 		delete(data_revised);
 	}
-	data_revised = new ImageData(NULL, width, height, colorchannels);
+	data_revised = new ImageData(NULL, width, height, colorchannels, false);
 	if (NULL == data_revised)
 	{
 		throw (std::runtime_error("Unable to allocate memory for revised image.\n"));
@@ -1928,7 +1928,7 @@ bool WorkSpace::DeleteSuperPixelSet(SuperPixel* sp)
 	return true;
 }
 
-ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
+ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revise method for watercolor.  Fill in entire Superpixel, adjust velocities and pressures using skeletons. ***
 // Mode: 0=normal
 //       1=post-processed
 //       2=skeleton
@@ -2011,7 +2011,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 			throw std::runtime_error("Unable to allocate memory for paint image.\n");
 			return img;
 		}
-		img = new ImageData(img_data, scale_width, scale_height, 3, true);
+		img = new ImageData(img_data, scale_width, scale_height, 3, true, prop.watercolor);
 		img->SetBackground(bg);
 		// Skeleton path painting
 		current = skeleton_head;
@@ -2025,8 +2025,22 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		else {
 			local_pixdata = pixeldata;
 		}
+		int count = 0;
+		int set_size = 0;
+		int watercolor_pigment_index = -1;
+		if (NULL != current)
+		{
+			set_size = current->GetSetSize();
+		}
 		while (current != NULL)
 		{
+			count++;
+			if (prop.watercolor)
+			{
+				Color color = current->GetAveColor();
+				Pigment* pgmnt = new Pigment(img->GetPaper()->GetWidth(), img->GetPaper()->GetHeight(), &color, 0.2, 0.09, 1.0, 0.41);
+				watercolor_pigment_index = img->GetPaper()->SetPigment(pgmnt);
+			}
 			Path* curve_path = current->GetPathHead();
 			while (NULL != curve_path)
 			{
@@ -2046,7 +2060,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				}
 				std::vector<Corner> curve = curve_path->GetCurve();
 				ave_radius = local_pixdata->CalculateRadius(curve.begin(), curve.end(), current->GetIdentifier());
-				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop);
+				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop, watercolor_pigment_index);
 				if (prop.paint_mask)
 				{
 					img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
@@ -2059,6 +2073,26 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 					second = current->GetAveColor();
 				}
 				curve_path = curve_path->GetNext();
+			}
+			if (prop.watercolor)
+			{
+				std::cout << "\n" << count << "/" << set_size << "\n";
+				if (0 == count % 20)
+				{
+					//img->GetPaper()->OutputSaturation(1);
+					//img->GetPaper()->OutputPressure(1);
+					//int num_pgmnt = img->GetPaper()->GetPigments().size();
+					//for (int pgmnt_index = 0; pgmnt_index < num_pgmnt; ++pgmnt_index)
+					//{
+					//	img->GetPaper()->OutputWaterConcentration(pgmnt_index);
+					//	img->GetPaper()->OutputDeposition(pgmnt_index);
+					//}
+					if (!img->ProcessWatercolor())
+					{
+						throw std::runtime_error("Error on ProcessWatercolor function call from GenerateImage.\n");
+						return NULL;
+					}
+				}
 			}
 			current = current->GetNext();
 		}
@@ -2090,8 +2124,31 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				}
 				current = current->GetNext();
 			}
+			if (prop.watercolor)
+			{
+				if (!img->ProcessWatercolor())
+				{
+					throw std::runtime_error("Error on ProcessWatercolor function call from GenerateImage.\n");
+					return NULL;
+				}
+			}
 		}
-		img->CollapseWideData(false);
+		if (prop.watercolor)
+		{
+			if (!img->ProcessWatercolor())
+			{
+				throw std::runtime_error("Error on ProcessWatercolor function call from GenerateImage.\n");
+				return NULL;
+			}
+			if (!img->RenderWatercolor())
+			{
+				throw std::runtime_error("Failed on RenderWatercolor in GenerateImage.\n");
+				return NULL;
+			}
+		}
+		else {
+			img->CollapseWideData(false);
+		}
 		return img;
 	}
 	else if (4 == mode)

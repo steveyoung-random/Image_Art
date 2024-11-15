@@ -277,6 +277,18 @@ int SuperPixel::GetSize()
 	return size;
 }
 
+int SuperPixel::GetSetSize()
+{
+	int ret = 0;
+	SuperPixel* current = GetHead();
+	while (NULL != current)
+	{
+		++ret;
+		current = current->GetNext();
+	}
+	return ret;
+}
+
 bool SuperPixel::SetPrevSize()
 {
 	prevsize = size;

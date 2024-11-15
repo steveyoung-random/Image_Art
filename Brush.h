@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include "General.h"
+#include "Paper.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <array>
@@ -47,19 +48,18 @@ private:
 	std::vector<Bristle*> bristles;
 	float** bristle_kernel;
 	Paint_Properties paint_prop;
+	bool watercolor;
+	Paper* watercolor_paper;
+	int watercolor_pigment_index;
 
 public:
-	Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_Properties prop);
+	Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_Properties prop, Paper* paper=NULL, int pigment_index=-1);
 	~Brush();
 
-	bool Dab(unsigned char* data, int width, int height);
-	bool Dab2(float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, float flow_adjustment = 1.0);
 	bool Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float spot_radius = -1, bool begin=false, SPixelData* extinguish_mask = NULL);
 	bool MoveTo(FloatPointPair loc);
-	bool PaintTo(FloatPointPair loc, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, float rad1 = -1, float rad2 = -1);
 	bool PaintTo2(FloatPointPair loc2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, float rad1 = -1, float rad2 = -1, bool begin=false, SPixelData* extinguish_mask = NULL);
 	bool ChangeColor(Color c, Color sec);
-	bool PaintCorner(Corner corner, float* data, int width, int height, SPixelData* mask = NULL, int mask_value = 0, bool variable_radius = false);
 	bool PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask=false, SPixelData* extinguish_mask=NULL);
 	bool ExtinguishCorner(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value);
 	bool SetOrientation(FloatPointPair o);

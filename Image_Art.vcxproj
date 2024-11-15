@@ -108,6 +108,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,6 +127,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,9 +144,11 @@
   <ItemGroup>
     <ClCompile Include="Brush.cpp" />
     <ClCompile Include="Cell.cpp" />
+    <ClCompile Include="General.cpp" />
     <ClCompile Include="GradData.cpp" />
     <ClCompile Include="ImageData.cpp" />
     <ClCompile Include="Image_Art.cpp" />
+    <ClCompile Include="Paper.cpp" />
     <ClCompile Include="Path.cpp" />
     <ClCompile Include="SkeletonPointCollection.cpp" />
     <ClCompile Include="SPixelData.cpp" />
@@ -156,6 +162,7 @@
     <ClInclude Include="GradData.h" />
     <ClInclude Include="ImageData.h" />
     <ClInclude Include="Image_Art.h" />
+    <ClInclude Include="Paper.h" />
     <ClInclude Include="Path.h" />
     <ClInclude Include="SkeletonPointCollection.h" />
     <ClInclude Include="SPixelData.h" />

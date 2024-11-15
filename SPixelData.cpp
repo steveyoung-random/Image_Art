@@ -815,7 +815,7 @@ ImageData* SPixelData::GenerateImage(SuperPixel* sp, Color background)
 	//red.channel[0] = 255;
 	//red.channel[1] = 0;
 	//red.channel[2] = 0;
-	ret = new ImageData(NULL, width, height, 3);
+	ret = new ImageData(NULL, width, height, 3, false);
 	if (NULL == ret)
 	{
 		throw (std::runtime_error("Unable to allocate memory for generated image in SPixelData.\n"));

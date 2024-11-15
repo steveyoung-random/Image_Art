@@ -494,7 +494,7 @@ ImageData* GradData::Gradient2Image(int mode)
 				data[pos + 2] = value;  // Linear burn: add both values, subtract 255 (floor at zero).
 			}
 		}
-		ret = new ImageData(data, width, height, 3);
+		ret = new ImageData(data, width, height, 3, false);
 		if (NULL == ret)
 		{
 			throw std::runtime_error("Failed to create ImageData in Gradient2Image.\n");
