@@ -509,29 +509,30 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 			(new_stroke || ((movement_distance >= 1.0))))  // But we also need to either have a new stroke or sufficient movement distance.
 		{
 			bristle->SetLast(bristle_location);
-			for (int i = -2; i <= 2; ++i)
+			if (watercolor)
 			{
-				for (int j = -2; j <= 2; ++j)
+				watercolor_paper->Dab((int)x, (int)y, 10, 0.3, (flow_diff + paint_prop.flow) / 50000.0, watercolor_pigment_index);
+			}
+			else {
+				for (int i = -2; i <= 2; ++i)
 				{
-					float adjustment;
-					x = bristle_location.x + i;
-					y = bristle_location.y + j;
-					if (paint_prop.sub_pixel)
+					for (int j = -2; j <= 2; ++j)
 					{
-						adjustment = KernelAdjustment(i, j, x, y);
-					}
-					else {
-						adjustment = bristle_kernel[abs(i)][abs(j)];
-					}
-
-					float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
-					if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
-					{
-						if (watercolor)
+						float adjustment;
+						x = bristle_location.x + i;
+						y = bristle_location.y + j;
+						if (paint_prop.sub_pixel)
 						{
-							watercolor_paper->Dab((int)x, (int)y, 10, 0.004, adjusted_flow / 65000.0, watercolor_pigment_index);
+							adjustment = KernelAdjustment(i, j, x, y);
 						}
 						else {
+							adjustment = bristle_kernel[abs(i)][abs(j)];
+						}
+
+						float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
+						if ((x >= 0) && (x < width) && (y >= 0) && (y < height))
+						{
+
 							for (int color_index = 0; color_index < 3; ++color_index)
 							{
 								long pos = (int)y * width * 3 + (int)x * 3 + color_index;
@@ -577,6 +578,7 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 									}
 								}
 							}
+
 						}
 					}
 				}

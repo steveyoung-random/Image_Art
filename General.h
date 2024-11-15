@@ -65,7 +65,7 @@
 #define process_steps 400 // 1400
 // Set pressure_delta to -1 for speckled image with more water dispertion
 #define pressure_delta 1
-#define dab_pressure 0.00005f
+#define dab_pressure 0.00125f
 #define chunk_size 96  // This is the size for chunking out the matrices for efficiency.  * MUST BE A MULTIPLE OF AVX2_STRIDE * .
 
 // Values for AVX2
