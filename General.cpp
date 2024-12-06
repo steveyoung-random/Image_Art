@@ -448,7 +448,7 @@ bool WriteOutSparseFloatMatrix(SparseFloatMatrix* source, int x, int y, std::str
 
 float* PadMatrix(float** input, int x, int y, int min_pad, int& pad_width, int& pad_height, float background)
 {
-	float* output = NULL;
+	float* output = NULL;  // Data is stored by columns, so the entire height of the first column comes before the second column.
 	pad_width = x + 2 * min_pad;
 	pad_height = (y + 2 * min_pad + align_bits - 1) & ~(align_bits - 1);
 #ifdef _WIN32
@@ -510,7 +510,7 @@ bool FreePadMatrix(float* matrix)
 
 bool Convolve(const float* input, float* output, float** kernel, const int pad_width, const int pad_height, const int kernel_radius)
 {
-	// The input and output matrices need to be padded using the PadMatrix function.
+	// The input and output matrices need to be padded using the PadMatrix function.  input and output are stored by columns.
 	// pad_width and pad_height apply to input and output matrices.
 	// kernel_size is twice the kernel_radius plus 1 (so, always odd).  The kernel_radius is the radius beyond the origin point.
 

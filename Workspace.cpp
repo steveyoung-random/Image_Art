@@ -2038,8 +2038,21 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 			if (prop.watercolor)
 			{
 				Color color = current->GetAveColor();
-				Pigment* pgmnt = new Pigment(img->GetPaper()->GetWidth(), img->GetPaper()->GetHeight(), &color, 0.2, 0.09, 1.0, 0.41);
-				watercolor_pigment_index = img->GetPaper()->SetPigment(pgmnt);
+				Paper* localpaper = img->GetPaper();
+				Pigment* pgmnt = new Pigment(localpaper->GetWidth(), localpaper->GetHeight(), &color, 0.2, 0.01, 1.0, 0.31);
+				watercolor_pigment_index = localpaper->SetPigment(pgmnt);
+				RectQuad window = current->GetWindow();
+				int identifier = current->GetIdentifier();
+				for (int i = window.x0; i <= window.x1; ++i)
+				{
+					for (int j = window.y0; j <= window.y1; j++)
+					{
+						if (local_pixdata->GetPixel(i, j) == identifier)
+						{
+							localpaper->Dab(i, j, 0, 0.3, 1.3, watercolor_pigment_index); // wet: 0.6 saturation 1.3 concentration dry: 0.3, 1.3
+						}
+					}
+				}
 			}
 			Path* curve_path = current->GetPathHead();
 			while (NULL != curve_path)
@@ -2074,10 +2087,11 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 				}
 				curve_path = curve_path->GetNext();
 			}
+
 			if (prop.watercolor)
 			{
 				std::cout << "\n" << count << "/" << set_size << "\n";
-				if (0 == count % 20)
+				if (0 == count % 5)
 				{
 					//img->GetPaper()->OutputSaturation(1);
 					//img->GetPaper()->OutputPressure(1);

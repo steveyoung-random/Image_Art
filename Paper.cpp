@@ -503,12 +503,12 @@ Paper::Paper(int width, int height, Color c, float saturation)
 {
 	color = c;
 	float** temp_thickness = NULL;
-	int gauss_radius = 50;
-	float gauss_thin_factor = 0.5;
+	int gauss_radius = 50; // 50
+	float gauss_thin_factor = 0.5; // 0.5
 	float** gauss_kernel = NULL;
 	float gauss_total = 0.0;
 	float paper_average = 0.5; // .7
-	float paper_range = 0.4;
+	float paper_range = 0.5;
 	int num_fibers = width * height / 1200;
 	float fiber_length = 20.0;
 	int num_blobs = width * height / 2400;
@@ -678,6 +678,7 @@ Paper::Paper(int width, int height, Color c, float saturation)
 	}
 
 	CopyFloatArray(thickness, temp_thickness, w, h);
+
 	// New gauss_kernel and gauss_total.
 	FreeGaussKernel(gauss_kernel, gauss_radius);
 	gauss_thin_factor = gauss_thin_factor * 0.75;
@@ -694,6 +695,7 @@ Paper::Paper(int width, int height, Color c, float saturation)
 	{
 		int x = x_rnd(gen);
 		int y = y_rnd(gen);
+		float fiber_value = (float)thick_dist(gen);
 		float length = fb_length(gen);
 		if (0 == i % 2)  // Horizontal
 		{
@@ -710,7 +712,8 @@ Paper::Paper(int width, int height, Color c, float saturation)
 			{
 				if ((wx >= 0) && (wx < width) && (wy >= 0) && (wy < height))
 				{
-					temp_thickness[(int)wx][(int)wy] = std::max(temp_thickness[(int)wx][(int)wy], paper_average + paper_range);
+					//temp_thickness[(int)wx][(int)wy] = std::min(temp_thickness[(int)wx][(int)wy], paper_average - paper_range);
+					temp_thickness[(int)wx][(int)wy] = fiber_value;
 				}
 				wx -= 1.0;
 				wy -= dy;
@@ -730,7 +733,8 @@ Paper::Paper(int width, int height, Color c, float saturation)
 			{
 				if ((wx >= 0) && (wx < width) && (wy >= 0) && (wy < height))
 				{
-					temp_thickness[(int)wx][(int)wy] = std::max(temp_thickness[(int)wx][(int)wy], paper_average + paper_range);
+					//temp_thickness[(int)wx][(int)wy] = std::min(temp_thickness[(int)wx][(int)wy], paper_average - paper_range);
+					temp_thickness[(int)wx][(int)wy] = fiber_value;
 				}
 				wy -= 1.0;
 				wx -= dx;
@@ -756,12 +760,14 @@ Paper::Paper(int width, int height, Color c, float saturation)
 					float blob_value = (float)thick_dist(gen);
 					if ((dx * dx + dy * dy) <= (radius * radius))
 					{
-						temp_thickness[(int)wx][(int)wy] = std::max(paper_average, std::max(temp_thickness[(int)wx][(int)wy], blob_value));
+						//temp_thickness[(int)wx][(int)wy] = std::min(paper_average, std::min(temp_thickness[(int)wx][(int)wy], blob_value));
+						temp_thickness[(int)wx][(int)wy] = blob_value;
 					}
 				}
 			}
 		}
 	}
+
 	// Use the gauss_kernel to smooth the random thickness of the paper.
 	if (use_AVX2)
 	{
@@ -810,6 +816,7 @@ Paper::Paper(int width, int height, Color c, float saturation)
 			}
 		}
 	}
+
 	if (!RenormalizeFloatArray(thickness, width, height, paper_average - paper_range, paper_average + paper_range))
 	{
 		throw std::runtime_error("Failed to renormalize thickness in Paper constructor.\n");
@@ -1007,19 +1014,30 @@ bool Paper::Dab(int x, int y, int radius, float saturation, float concentration,
 	if ((pgmnt_num >= 0) && (pgmnt_num < pigments.size()))
 	{
 		Pigment* pgmnt = pigments[pgmnt_num];
-		for (int i = x - radius; i <= (x + radius); ++i)
+		if (radius < 1)
 		{
-			if ((i > 0) && (i < (w - 1)))
+			if ((x > 0) && (x < (w - 1)) && (y > 0) && (y < (h - 1)))
 			{
-				int offset = sqrt(radius * radius - abs(x - i) * abs(x - i));
-				for (int j = y - offset; j <= (y + offset); ++j)
+				s[x][y] += saturation;
+				pgmnt->Add_g(x, y, concentration);
+				M[x][y] = true;
+				p[x][y] += dab_pressure;
+			}
+		}else{
+			for (int i = x - radius; i <= (x + radius); ++i)
+			{
+				if ((i > 0) && (i < (w - 1)))
 				{
-					if ((j > 0) && (j < (h - 1)))
+					int offset = sqrt(radius * radius - abs(x - i) * abs(x - i));
+					for (int j = y - offset; j <= (y + offset); ++j)
 					{
-						s[i][j] += saturation;
-						pgmnt->Add_g(i, j, concentration);
-						M[i][j] = true;  // Note that M_column values are not updated here.  They are updated in the Process function.
-						p[i][j] += dab_pressure;
+						if ((j > 0) && (j < (h - 1)))
+						{
+							s[i][j] += saturation;
+							pgmnt->Add_g(i, j, concentration);
+							M[i][j] = true;  // Note that M_column values are not updated here.  They are updated in the Process function.
+							p[i][j] += dab_pressure;
+						}
 					}
 				}
 			}
@@ -1294,6 +1312,16 @@ bool Paper::Process(bool out)
 		throw std::runtime_error("UpdateM_chunks failed in Process.\n");
 	}
 	else {
+		if (out)
+		{
+			int num_pgmnt = pigments.size();
+			for (int pgmnt_index = 0; pgmnt_index < num_pgmnt; ++pgmnt_index)
+			{
+				OutputWaterConcentration(pgmnt_index);
+				OutputDeposition(pgmnt_index);
+			}
+			OutputPressure(1);
+		}
 		ret = ret && Calc_M_prime();
 		std::cout << "\n";
 		for (int count = 0; ret && (count <= process_steps); ++count)
@@ -1320,16 +1348,7 @@ bool Paper::Process(bool out)
 			}
 		}
 	}
-	if (out)
-	{
-		int num_pgmnt = pigments.size();
-		for (int pgmnt_index = 0; pgmnt_index < num_pgmnt; ++pgmnt_index)
-		{
-			OutputWaterConcentration(pgmnt_index);
-			OutputDeposition(pgmnt_index);
-		}
-		OutputPressure(1);
-	}
+
 	Dry();
 	std::cout << " Done.\n";
 	return ret;
@@ -1631,9 +1650,10 @@ bool Paper::CapillaryFlow()
 				l = j + bit0 * (2 * bit1 - 1);
 				if ((k > 0) && (k < (w - 1)) && (l > 0) && (l < (h - 1))) // Check to see if k or l is out of bounds.
 				{
-					if ((s[i][j] > saturation_epsilon) && (s[i][j] > s[k][l]) && (s[k][l] > saturation_delta))
+					//					if ((s[i][j] > saturation_epsilon) && (s[i][j] > s[k][l]) && (s[k][l] > saturation_delta))
+					if ((s[i][j] > saturation_epsilon * capacity(i, j)) && (s[i][j] > s[k][l]))
 					{
-						float del_s = std::max(0.0f, std::min(s[i][j] - s[k][l], capacity(k, l) - s[k][l]) / 4.0f);
+						float del_s = std::max(0.0f, std::min(saturation_max_diffusion, std::min(s[i][j] - s[k][l], capacity(k, l) - s[k][l]) / 4.0f));
 						s_prime[i][j] = s_prime[i][j] - del_s;
 						s_prime[k][l] = s_prime[k][l] + del_s;
 					}
@@ -1652,21 +1672,14 @@ bool Paper::CapillaryFlow()
 		wy = wy * chunk_size;
 		int i_limit = std::min(wx + chunk_size, w);
 		int j_limit = std::min(wy + chunk_size, h);
-		//if (0 == wx)
-		//{
-		//	wx = 1;
-		//}
-		//if (0 == wy)
-		//{
-		//	wy = 1;
-		//}
 		for (int i = wx; i < i_limit; ++i)
 		{
 			for (int j = wy; j < j_limit; ++j)
 			{
-				if ((s[i][j] > saturation_sigma) && (!M[i][j]))
+				if ((!M[i][j]) && ((s[i][j] > saturation_sigma) || (s[i][j] >= (capacity(i, j) - 2.0 * absorption_alpha))))
 				{
 					M[i][j] = true;
+					p[i][j] = 0.0f;
 					ret = ret && Calc_M_prime(i, j);
 					need_update = true;
 				}

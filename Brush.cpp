@@ -94,7 +94,7 @@ Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_P
 		}
 		if (pigment_index < 0)
 		{
-			Pigment* pgmnt = new Pigment(watercolor_paper->GetWidth(), watercolor_paper->GetHeight(), &color, 0.2, 0.09, 1.0, 0.41);
+			Pigment* pgmnt = new Pigment(watercolor_paper->GetWidth(), watercolor_paper->GetHeight(), &color, 0.2, 0.01, 1.0, 0.31);
 			watercolor_pigment_index = watercolor_paper->SetPigment(pgmnt);
 		}
 	}
@@ -420,6 +420,12 @@ bool Brush::ChangeColor(Color c, Color sec)
 bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, bool begin, SPixelData* extinguish_mask)
 {
 	// Use direction to measure whether the movement has been forward.
+	if ((abs(direction.x) > EFFECTIVE_ZERO) && (abs(direction.y) > EFFECTIVE_ZERO))
+	{
+		float magnitude = sqrt(direction.x * direction.x + direction.y * direction.y);
+		direction.x = direction.x / magnitude;
+		direction.y = direction.y / magnitude;
+	}
 
 	float scaled_spot_radius_squared = spot_radius * spot_radius * paint_prop.paint_scale * paint_prop.paint_scale;
 	bool new_stroke = false;
@@ -511,7 +517,9 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 			bristle->SetLast(bristle_location);
 			if (watercolor)
 			{
-				watercolor_paper->Dab((int)x, (int)y, 10, 0.3, (flow_diff + paint_prop.flow) / 50000.0, watercolor_pigment_index);
+//				watercolor_paper->Dab((int)x, (int)y, 5, 0.6, (flow_diff + paint_prop.flow) / 5000.0, watercolor_pigment_index);  // *** Try doing a single pass of the Superpixel with uniform concentration, and velocity from path. ***
+				// Just need to adjust velocity.
+				watercolor_paper->SetVelocity((int)x, (int)y, direction.x/1000.0f, direction.y/1000.0f, true);
 			}
 			else {
 				for (int i = -2; i <= 2; ++i)

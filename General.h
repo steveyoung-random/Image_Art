@@ -44,28 +44,28 @@
 
 // Watercolor defines
 
-#define mu 0.03f // 0.005 - 0.05f
-#define kappa 0.001f // 0.001f - 0.040f
-#define absorption_alpha 0.1f // 0.1f
-#define saturation_sigma 0.1f // 0.1f
-#define saturation_dry_value 0.005f
-#define saturation_epsilon 0.48f  // 0.48 0.53 0.55 0.57 
-#define saturation_delta -0.1f // -0.1f
-#define capacity_max 0.9f // 0.9f
-#define capacity_min 0.3f // 0.3f
-#define relaxation_steps 70 // 50, 120
-#define tau 0.005f // 0.01f, 0.005f
-#define xi 0.15f // 0.1f
-#define K_radius 5 // 5
-#define eta 0.001f // 0.03f
-#define slope_factor 1.0f // 1.0f
-#define slope_velocity_steps 400
-#define max_velocity 2.5f // 2.5f
-#define render_g_value 1.0f // render_g_value 0.2 -0.035f
-#define process_steps 400 // 1400
+#define mu 0.05f // wet: 0.030f dry: 0.05f 0.005 - 0.05f
+#define kappa 0.001f // wet: 0.001f dry: 0.001f 0.001f - 0.040f
+#define absorption_alpha 0.001f // wet: 0.1f dry: 0.001f 0.1f
+#define saturation_sigma 0.1f // wet: 0.1 f dry: 0.1f 0.1f
+#define saturation_dry_value 0.005f // wet: 0.005f dry: 0.005f
+#define saturation_epsilon 0.999f // wet: 0.9f dry: 0.999f 0.9
+#define saturation_max_diffusion 0.1f // wet: 0.1f dry: 0.1f 0.1
+#define capacity_max 0.9f // wet: 0.9f dry: 0.9f 0.9f
+#define capacity_min 0.1f // wet: 0.1f dry: 0.1f 0.3f
+#define relaxation_steps 70 // wet: 70 dry: 70 50, 120
+#define tau 0.005f // wet: 0.005f dry: 0.005f 0.01f, 0.005f
+#define xi 0.15f // wet: 0.15f dry: 0.15f 0.1f
+#define K_radius 5 // wet: 5 dry: 5 5
+#define eta 0.25f // wet: 0.001f dry: 0.25f 0.03f
+#define slope_factor 1.0f // wet: 1.0f dry: 1.0f 1.0f
+#define slope_velocity_steps 400 // wet: 400 dry: 400
+#define max_velocity 2.5f // wet: 2.5f dry: 2.5f 2.5f
+#define render_g_value 0.45f // wet: 1.0f dry: 0.45f 0.2 -0.035f
+#define process_steps 400 // wet: 400 dry: 400 1400
 // Set pressure_delta to -1 for speckled image with more water dispertion
-#define pressure_delta 1
-#define dab_pressure 0.00125f
+#define pressure_delta 1 // wet: 1 dry: 1
+#define dab_pressure 0.01f // wet: 0.01f dry: 0.01f
 #define chunk_size 96  // This is the size for chunking out the matrices for efficiency.  * MUST BE A MULTIPLE OF AVX2_STRIDE * .
 
 // Values for AVX2
