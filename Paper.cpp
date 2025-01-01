@@ -108,11 +108,11 @@ bool Paper::PaperSlope()  // Induces velocities in the water due to paper slopes
 				{
 					if (M[i][j])
 					{
-						if ((M[i - 1][j]) && (i > 0)) // Only update for places not on the edge of the paper.
+						if ((i > 0) && (M[i - 1][j]))
 						{
 							u[i][j] -= slope_factor * (thickness[i][j] - thickness[i - 1][j]);
 						}
-						if ((M[i][j - 1]) && (j > 0)) // Only update for places not on the edge of the paper.
+						if ((j > 0) && (M[i][j - 1]))
 						{
 							v[i][j] -= slope_factor * (thickness[i][j] - thickness[i][j - 1]);
 						}
@@ -1023,7 +1023,8 @@ bool Paper::Dab(int x, int y, int radius, float saturation, float concentration,
 				M[x][y] = true;
 				p[x][y] += dab_pressure;
 			}
-		}else{
+		}
+		else {
 			for (int i = x - radius; i <= (x + radius); ++i)
 			{
 				if ((i > 0) && (i < (w - 1)))
@@ -1332,6 +1333,13 @@ bool Paper::Process(bool out)
 				{
 					throw std::runtime_error("Error in Tick called from Process.\n");
 				}
+				int num_pgmnt = pigments.size();
+				//for (int pgmnt_index = 0; pgmnt_index < num_pgmnt; ++pgmnt_index)
+				//{
+				//	OutputWaterConcentration(pgmnt_index);
+				//	OutputDeposition(pgmnt_index);
+				//}
+				//OutputPressure(count);
 				std::cout << ".";
 			}
 			catch (std::runtime_error e)
@@ -1438,7 +1446,8 @@ bool Paper::MovePigment()  // *** Consider some mixing between cells not based o
 	{
 		Pigment* k_pntr = *k;
 		float step_size = dt; // The step size, which is also the scale factor for u and v, so that they take into account the time step size.
-		float keep_going = true;
+		t = 0.0f;
+		bool keep_going = true;
 		while (ret && keep_going)  // t is updated at the end of the step.
 		{
 			if ((false == g->Copy(k_pntr->Get_g())) || (false == g_prime->Copy(k_pntr->Get_g())))
@@ -1517,20 +1526,16 @@ bool Paper::MovePigment()  // *** Consider some mixing between cells not based o
 				throw std::runtime_error("Failed to copy g values in MovePigment.\n");
 				ret = false;
 			}
-
+			t += step_size;
 			if (t >= 1.0f)
 			{
 				keep_going = false;
 			}
 			else {
-				t += dt;
-				if (t > 1.0f)  // Adjust if the step would go past t = 1.0.
+				step_size = std::min(step_size, 1.0f - t);
+				if (step_size < EFFECTIVE_ZERO)
 				{
-					step_size = dt - (t - 1.0f);
-					if (step_size < EFFECTIVE_ZERO)
-					{
-						keep_going = false;
-					}
+					keep_going = false;
 				}
 			}
 		}
@@ -1552,10 +1557,9 @@ bool Paper::TransferPigment()
 			int i_limit = std::min(chunk_size, w - wx);
 			int j_limit = std::min(chunk_size, h - wy);
 			int k;
-			for (k = 0; (ret && (k < pigments.size())); ++k)
+			for (std::vector<Pigment*>::iterator pgmnt_it = pigments.begin(); pgmnt_it != pigments.end(); ++pgmnt_it)
 			{
-				Pigment* k_pntr = pigments[k];
-				bool dry_layer = CheckDry(k);
+				Pigment* k_pntr = *pgmnt_it;
 				SparseFloatMatrix* pigment_g = k_pntr->Get_g();
 				SparseFloatMatrix* pigment_d = k_pntr->Get_d();
 				bool g_chunk_used = pigment_g->CheckChunkNumber(chunk_index);
@@ -1712,7 +1716,7 @@ bool Paper::UpdateVelocities(bool slope_velocity)
 		dt = 1.0f / max_vel;
 	}
 	float step_size = dt; // The step size, which is also the scale factor for u and v, so that they take into account the time step size.
-	float keep_going = true;
+	bool keep_going = true;
 	//	int num_chunks = x_chunks * y_chunks;
 	while (ret && keep_going)  // t is updated at the end of the step.
 	{
@@ -1799,19 +1803,16 @@ bool Paper::UpdateVelocities(bool slope_velocity)
 		}
 		ret = (CopyFloatArray(u_prime, u, w + 1, h) && CopyFloatArray(v_prime, v, w, h + 1));
 		ret = (ret && EnforceBoundaries());
+		t += step_size;
 		if (t >= 1.0f)
 		{
 			keep_going = false;
 		}
 		else {
-			t += dt;
-			if (t > 1.0f)  // Adjust if the step would go past t = 1.0.
+			step_size = std::min(step_size, 1.0f - t);
+			if (step_size < EFFECTIVE_ZERO)
 			{
-				step_size = dt - (t - 1.0f);
-				if (step_size < EFFECTIVE_ZERO)
-				{
-					keep_going = false;
-				}
+				keep_going = false;
 			}
 		}
 	}
@@ -1834,7 +1835,7 @@ bool Paper::UpdateVelocitiesThreads(bool slope_velocity)
 		dt = 1.0f / max_vel;
 	}
 	float step_size = dt; // The step size, which is also the scale factor for u and v, so that they take into account the time step size.
-	float keep_going = true;
+	bool keep_going = true;
 	std::vector<bool> results(M_chunks.size());
 	//	int num_chunks = x_chunks * y_chunks;
 	while (ret && keep_going)  // t is updated at the end of the step.
@@ -1876,19 +1877,16 @@ bool Paper::UpdateVelocitiesThreads(bool slope_velocity)
 
 		}
 		ret = (ret && EnforceBoundaries());
+		t += step_size;
 		if (t >= 1.0f)
 		{
 			keep_going = false;
 		}
 		else {
-			t += dt;
-			if (t > 1.0f)  // Adjust if the step would go past t = 1.0.
+			step_size = std::min(step_size, 1.0f - t);
+			if (step_size < EFFECTIVE_ZERO)
 			{
-				step_size = dt - (t - 1.0f);
-				if (step_size < EFFECTIVE_ZERO)
-				{
-					keep_going = false;
-				}
+				keep_going = false;
 			}
 		}
 	}
@@ -2224,7 +2222,7 @@ bool Paper::FlowOutward()
 				{
 					if (M[i][j])
 					{
-						//p[i][j] = std::max((float)(p[i][j] - eta * M_prime[i][j]), 0.0f);
+						//p[i][j] = std::max((float)(p[i][j] - eta * M_prime[i][j]), -5.0f);
 						p[i][j] = (float)(p[i][j] - eta * M_prime[i][j]);
 					}
 				}
