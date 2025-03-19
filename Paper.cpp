@@ -1493,10 +1493,10 @@ bool Paper::MovePigment()  // *** Consider some mixing between cells not based o
 						float outflow_factor = g_move_left + g_move_right + g_move_top + g_move_bottom;  // Detect if total outflow would be higher than 1.0.
 						if (outflow_factor <= 1.0f)
 						{
-							outflow_factor = g->Get_Value(i, j) * step_size;
+							outflow_factor = pigment_lag * g->Get_Value(i, j) * step_size;
 						}
 						else {
-							outflow_factor = g->Get_Value(i, j) * step_size / outflow_factor;
+							outflow_factor = pigment_lag * g->Get_Value(i, j) * step_size / outflow_factor;
 						}
 						if (outflow_factor > EFFECTIVE_ZERO)
 						{

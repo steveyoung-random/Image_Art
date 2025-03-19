@@ -1,6 +1,6 @@
 #include "Workspace.h"
 
-// Copyright (c) 2023-2024 Steve Young
+// Copyright (c) 2023-2025 Steve Young
 // Licensed under the MIT License
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -2043,16 +2043,16 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 				watercolor_pigment_index = localpaper->SetPigment(pgmnt);
 				RectQuad window = current->GetWindow();
 				int identifier = current->GetIdentifier();
-				for (int i = window.x0; i <= window.x1; ++i)
-				{
-					for (int j = window.y0; j <= window.y1; j++)
-					{
-						if (local_pixdata->GetPixel(i, j) == identifier)
-						{
-							localpaper->Dab(i, j, 0, 0.3, 1.3, watercolor_pigment_index); // wet: 0.6 saturation 1.3 concentration dry: 0.3, 1.3
-						}
-					}
-				}
+				//for (int i = window.x0; i <= window.x1; ++i)
+				//{
+				//	for (int j = window.y0; j <= window.y1; j++)
+				//	{
+				//		if (local_pixdata->GetPixel(i, j) == identifier)
+				//		{
+				//			localpaper->Dab(i, j, 0, 0.3, 1.3, watercolor_pigment_index); // wet: 0.6 saturation 1.3 concentration dry: 0.3, 1.3
+				//		}
+				//	}
+				//}
 			}
 			Path* curve_path = current->GetPathHead();
 			while (NULL != curve_path)
@@ -2087,20 +2087,11 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 				}
 				curve_path = curve_path->GetNext();
 			}
-
 			if (prop.watercolor)
 			{
 				std::cout << "\n" << count << "/" << set_size << "\n";
-				if (0 == count % 5)
+				if (false && (0 == count % 5))
 				{
-					//img->GetPaper()->OutputSaturation(1);
-					//img->GetPaper()->OutputPressure(1);
-					//int num_pgmnt = img->GetPaper()->GetPigments().size();
-					//for (int pgmnt_index = 0; pgmnt_index < num_pgmnt; ++pgmnt_index)
-					//{
-					//	img->GetPaper()->OutputWaterConcentration(pgmnt_index);
-					//	img->GetPaper()->OutputDeposition(pgmnt_index);
-					//}
 					if (!img->ProcessWatercolor())
 					{
 						throw std::runtime_error("Error on ProcessWatercolor function call from GenerateImage.\n");

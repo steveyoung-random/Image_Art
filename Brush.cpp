@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Steve Young
+// Copyright (c) 2023-2025 Steve Young
 // Licensed under the MIT License
 
 #include "Brush.h"
@@ -517,9 +517,9 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 			bristle->SetLast(bristle_location);
 			if (watercolor)
 			{
-//				watercolor_paper->Dab((int)x, (int)y, 5, 0.6, (flow_diff + paint_prop.flow) / 5000.0, watercolor_pigment_index);  // *** Try doing a single pass of the Superpixel with uniform concentration, and velocity from path. ***
+				watercolor_paper->Dab((int)x, (int)y, 5, 0.6, (flow_diff + paint_prop.flow) / 5000.0, watercolor_pigment_index);  // *** Try doing a single pass of the Superpixel with uniform concentration, and velocity from path. ***
 				// Just need to adjust velocity.
-				//watercolor_paper->SetVelocity((int)x, (int)y, direction.x/1000.0f, direction.y/1000.0f, true);
+				watercolor_paper->SetVelocity((int)x, (int)y, direction.x/1000.0f, direction.y/1000.0f, true);
 			}
 			else {
 				for (int i = -2; i <= 2; ++i)
