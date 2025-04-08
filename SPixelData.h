@@ -14,6 +14,9 @@ private:
 	int* data = NULL;
 	int width, height;
 	std::set<int> meeting_points;
+#ifdef USE_CUDA
+	int* c_device_data = NULL;  // This is the on-device version of data.
+#endif
 
 public:
 	SPixelData(int w, int h);
@@ -36,4 +39,8 @@ public:
 	float RadiusTransverse(FloatPointPair p, FloatPointPair c, int mask_value);
 	FloatPointPair AxialExtent(FloatPointPair p, FloatPointPair c, int mask_value);
 	bool FloodReplace(int p, int orig, int updated);
+#ifdef USE_CUDA
+	bool SyncToDevice();
+	int* GetDeviceData();
+#endif
 };

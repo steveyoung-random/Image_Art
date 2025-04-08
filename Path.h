@@ -43,13 +43,13 @@ private:
 	std::set<int> point_set;
 	std::vector<PointPair> fine_points;  // Rather than record sub-pixel location, record pixel location of pixel down and to the right of the point.
 	std::vector<PointPair> path_points; // Either points or fine_points, depending on which is being used.  Set in CalcForwardSegments().
-	Path* next;
-	Path* prev;
-	Path* subpath;
+	Path* next = NULL;
+	Path* prev = NULL;
+	Path* subpath = NULL;
 	RectQuad boundingbox;
 	bool forward;
 	std::string color_string;
-	SuperPixel* superpixel;
+	SuperPixel* superpixel = NULL;
 	std::vector<Segments> potential_segs;
 	std::vector<PolygonVertex> optimal_segments;
 	std::vector<Corner> optimal_curve;

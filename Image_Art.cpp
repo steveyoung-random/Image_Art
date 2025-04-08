@@ -1102,6 +1102,11 @@ int main(int argc, char** argv)
 		std::cout << "Exception: " << e.what() << "\n";
 		exit(1);
 	}
+	catch(std::exception e)
+	{
+		std::cout << "An error occurred.";
+		std::cout << e.what();
+	}
 	catch (...)
 	{
 		std::cout << "Unhandled exception in main.\n";

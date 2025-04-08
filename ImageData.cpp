@@ -6,7 +6,11 @@
 #include "SPixelData.h"
 #include "SuperPixel.h"
 
+#ifdef USE_CUDA
 ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values, bool watercolor)
+#else
+ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_values)
+#endif
 {
 	width = w;
 	height = h;
@@ -51,6 +55,7 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 			}
 		}
 	}
+#ifdef USE_CUDA
 	if (watercolor)
 	{
 		paper = new Paper(width, height, background_color, saturation_dry_value);
@@ -58,6 +63,7 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 	else {
 		paper = NULL;
 	}
+#endif
 }
 
 ImageData::~ImageData()
@@ -74,10 +80,12 @@ ImageData::~ImageData()
 	{
 		delete(brush);
 	}
+#ifdef USE_CUDA
 	if (NULL != paper)
 	{
 		delete(paper);
 	}
+#endif
 }
 
 Color ImageData::GetPixel(int x, int y)
@@ -148,10 +156,14 @@ bool ImageData::CreateBrush(FloatPointPair start, Color c, Color sec, int r, Pai
 	{
 		delete(brush);
 	}
+#ifdef USE_CUDA
 	brush = new Brush(start, c, sec, r, 10, prop, paper, pigment_index);
+#else
+	brush = new Brush(start, c, sec, r, 10, prop);
+#endif
 	if (NULL == brush)
 	{
-		throw std::runtime_error("Failed to create Brush in ImageData::CreateBrush function.\n");
+		throw std::runtime_error("Failed to create Brush in ImageData::CreateCudaBrush function.\n");
 		ret = false;
 	}
 	return ret;
@@ -165,12 +177,18 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 	}
 	Corner local_corner;
 	std::vector<Corner>::iterator it;
+#ifdef USE_CUDA
+	if (brush->GetWatercolor())
+	{
+		brush->StrokeBegin();
+	}
+#endif
 	for (it = curve.begin(); it != curve.end(); ++it)
 	{
 		local_corner = *it;
 		if (local_corner.smooth)
 		{
-			brush->PaintCorner2(local_corner, data_wide, width, height, mask, mask_value, use_mask, extinguish_mask);
+			brush->PaintCorner(local_corner, data_wide, width, height, mask, mask_value, use_mask, extinguish_mask);
 		}
 		else {
 			FloatPointPair dir = { 0, 0 };
@@ -191,47 +209,16 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 			dir.x = cos(o);
 			dir.y = sin(o);
 			brush->MoveTo(local_corner.p0);
-			brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_p0, local_corner.radius_c0, true, extinguish_mask);
-			brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_c0, local_corner.radius_p1, false, extinguish_mask);
+			brush->PaintTo(local_corner.c0, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_p0, local_corner.radius_c0, true, extinguish_mask);
+			brush->PaintTo(local_corner.p1, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_c0, local_corner.radius_p1, false, extinguish_mask);
 		}
 	}
-	/*
-	if (extinguish)
+#ifdef USE_CUDA
+	if (brush->GetWatercolor())
 	{
-		for (it = curve.begin(); it != curve.end(); ++it)
-		{
-			local_corner = *it;
-			if (local_corner.smooth)
-			{
-				brush->ExtinguishCorner(local_corner, data_wide, width, height, mask, mask_value);
-			}
-			else {
-				FloatPointPair dir = { 0, 0 };
-				if (curve.begin() == it)
-				{
-					if ((abs(local_corner.c0.x - local_corner.p0.x) > EFFECTIVE_ZERO) || (abs(local_corner.c0.y - local_corner.p0.y) > EFFECTIVE_ZERO))
-					{
-						dir.x = local_corner.c0.x - local_corner.p0.x;
-						dir.y = local_corner.c0.y - local_corner.p0.y;
-					}
-					else {
-						dir.x = local_corner.p1.x - local_corner.p0.x;
-						dir.y = local_corner.p1.y - local_corner.p0.y;
-					}
-					// *** write new functions for below. ***
-//					brush->SetOrientation(dir);
-				}
-// 				float o = brush->GetOrientation();
-				//dir.x = cos(o);
-				//dir.y = sin(o);
-//				brush->MoveTo(local_corner.p0);
-//				brush->PaintTo2(local_corner.c0, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_p0, local_corner.radius_c0, true);
-//				brush->PaintTo2(local_corner.p1, dir, data_wide, width, height, mask, mask_value, use_mask, local_corner.radius_c0, local_corner.radius_p1, false);
-			}
-		}
+		brush->StrokeEnd();
 	}
-	*/
-
+#endif
 	return true;
 }
 
@@ -315,10 +302,12 @@ bool ImageData::SetBackground(Color c)
 			}
 		}
 	}
+#ifdef USE_CUDA
 	if (NULL != paper)
 	{
 		paper->SetBackgroundColor(background_color);
 	}
+#endif
 	return true;
 }
 
@@ -336,6 +325,7 @@ bool ImageData::write_file(std::string filename)
 	return true;
 }
 
+#ifdef USE_CUDA
 bool ImageData::ProcessWatercolor()
 {
 	bool ret = true;
@@ -368,6 +358,7 @@ Paper* ImageData::GetPaper()
 {
 	return paper;
 }
+#endif
 
 GradData* ImageData::gen_gray(int channel, int nchannel)
 {
@@ -499,7 +490,7 @@ GradData* ImageData::gen_diff(ImageData* image2)
 }
 
 
-Color ImageData::CIELABconvert(unsigned char r, unsigned char g, unsigned char b)
+Color ImageData::CIELABconvert(float r, float g, float b)
 {
 	Color ret = { 0, 0, 0 }; // L*, a*, b* format.
 	double lin[3] = { 0, 0, 0 };
@@ -598,16 +589,16 @@ Color ImageData::RGBconvert(float L, float a, float b)
 		else {
 			ret.channel[i] = 1.055 * pow(ret.channel[i], (1 / 2.4)) - 0.055;
 		}
-		if (ret.channel[i] <= 0)
+		if (ret.channel[i] <= 0.0)
 		{
-			ret.channel[i] = 0;
+			ret.channel[i] = 0.0;
 		}
 		else if (ret.channel[i] >= 1.0)
 		{
-			ret.channel[i] = 255;
+			ret.channel[i] = 255.0;
 		}
 		else {
-			ret.channel[i] = 255 * ret.channel[i];
+			ret.channel[i] = 255.0 * ret.channel[i];
 		}
 	}
 	return ret;

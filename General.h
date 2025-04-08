@@ -13,7 +13,11 @@
 #include "stb_image_write.h"
 #include "stb_image.h"
 
-#define EFFECTIVE_ZERO 0.01f // 0.001f
+
+// CUDA
+//#define USE_CUDA
+
+#define EFFECTIVE_ZERO 0.001f // 0.001f
 #define CURVE_ADJUSTMENT 4
 #define MAX_CURVE_FACTOR 350
 #define OUTLINE false
@@ -23,7 +27,7 @@
 #define GLITCH3 false
 #define PAINT_SCALE 1
 #define SCALE_FLOW true
-#define BRISTLES 40
+#define BRISTLES 80
 #define FLOW 20.0
 #define FLOW_VARIATION 10.0
 #define SUBPIXEL false
@@ -40,16 +44,22 @@
 #define CONTRAST_RADIUS 0
 #define CONTRAST_BOX_MARGIN 2
 #define PAINT_MASK true
+#define BRISTLE_KERNEL 5
+#define DEFAULT_TO_WATERCOLOR true
+#ifdef USE_CUDA
+#define WATERCOLOR DEFAULT_TO_WATERCOLOR
+#else
 #define WATERCOLOR false
+#endif
 
 // Watercolor defines
 
-#define mu 0.03f // wet: 0.030f dry: 0.05f 0.005 - 0.05f
-#define kappa 0.001f // wet: 0.001f dry: 0.001f 0.001f - 0.040f
-#define absorption_alpha 0.01f // wet: 0.1f dry: 0.001f 0.1f
+#define mu 0.1f // wet: 0.020f dry: 0.05f 0.005 - 0.05f
+#define kappa 0.04f // wet: 0.001f dry: 0.001f 0.001f - 0.040f
+#define absorption_alpha 0.001f // wet: 0.1f dry: 0.001f 0.1f
 #define saturation_sigma 0.1f // wet: 0.1 f dry: 0.1f 0.1f
 #define saturation_dry_value 0.005f // wet: 0.005f dry: 0.005f
-#define saturation_epsilon 0.9f // wet: 0.9f dry: 0.999f 0.9
+#define saturation_epsilon 0.999f // wet: 0.9f dry: 0.999f 0.9
 #define saturation_max_diffusion 0.1f // wet: 0.1f dry: 0.1f 0.1
 #define capacity_max 0.9f // wet: 0.9f dry: 0.9f 0.9f
 #define capacity_min 0.1f // wet: 0.1f dry: 0.1f 0.3f
@@ -57,17 +67,20 @@
 #define tau 0.005f // wet: 0.005f dry: 0.005f 0.01f, 0.005f
 #define xi 0.15f // wet: 0.15f dry: 0.15f 0.1f
 #define K_radius 5 // wet: 5 dry: 5 5
-#define eta 0.001f // wet: 0.001f dry: 0.05f 0.03f
-#define pigment_lag 1.0f // wet: 1.0f dry: 0.85f
+#define eta 0.05f // wet: 0.001f dry: 0.05f 0.03f
+#define pigment_lag 0.85f // wet: 1.0f dry: 0.85f
 #define slope_factor 1.0f // wet: 1.0f dry: 1.0f 1.0f
 #define slope_velocity_steps 400 // wet: 400 dry: 400
 #define max_velocity 2.5f // wet: 2.5f dry: 2.5f 2.5f
-#define render_g_value 1.0f // wet: 1.0f dry: 0.45f 0.2 -0.035f
-#define process_steps 400 // wet: 400 dry: 400 1400
+#define render_g_value 0.0f // wet: 0.8f dry: 0.45f 0.2 -0.035f
+#define process_steps 100 // wet: 400 dry: 400 1400
 // Set pressure_delta to -1 for speckled image with more water dispertion
 #define pressure_delta 1 // wet: 1 dry: 1
 #define dab_pressure 0.01f // wet: 0.01f dry: 0.01f
-#define chunk_size 96  // This is the size for chunking out the matrices for efficiency.  * MUST BE A MULTIPLE OF AVX2_STRIDE * .
+#define dab_concentration 0.0075f // wet: 0.01f dry:
+#define dab_saturation 0.01f // wet: 0.05f dry:
+#define chunk_size 96  // This is the size for chunking out the matrices for efficiency.  * MUST BE A MULTIPLE OF SQUARE ROOT OF 'threads_per_block' * .
+#define brush_velocity 2.0f // The induced velocity during painting.
 
 // Values for AVX2
 #define AVX2_stride 8
@@ -135,53 +148,3 @@ struct Paint_Properties
 };
 
 float arccoth(float x);
-
-class SparseFloatMatrix
-{
-private:
-	int w, h; // Overall width and height of the matrix.
-	float background_value; // Value for any element that has not otherwise been initialized.
-	int x_chunks, y_chunks; // The number of chunks in the x and y direction (each of size chunk_size).
-	std::set<int> chunk_set; // The list of all chunks that have been allocated.
-	float*** chunk; // Pointers to each 2D float matrix.
-public:
-	SparseFloatMatrix(int width, int height, float value = 0.0f);
-	~SparseFloatMatrix();
-	bool Set_Value(int x, int y, float value, bool add = false); // Sets value in matrix, unless add is true in which case the value is added to existing value.
-	bool Reset_Values(); // Reset to background, by removing allocated chunks.
-	float Get_Value(int x, int y);
-	bool Copy(SparseFloatMatrix* src);
-	int GetChunkNumber(int x, int y);
-	bool CheckChunkNumber(int chunk_index);
-	bool Check(int x, int y);
-	std::set<int> GetChunkSet();
-	int GetXChunks();
-	int GetYChunks();
-	float** GetChunk(int chunk_index);
-	bool TestMask(bool** M, int chunk_index); // Return true if any element of M[x][y] is true within the identified chunk.
-};
-bool WriteOutSparseFloatMatrix(SparseFloatMatrix* source, int x, int y, std::string name, float min, float max);
-
-// Matrix operations for gaussian kernels.
-float** GaussKernel(int gauss_radius, float gauss_thin_factor);
-float GaussTotal(float** gauss_kernel, int gauss_radius);
-bool FreeGaussKernel(float** kernel, int gauss_radius);
-
-// Matrix operations for floating point arrays that are 32-bit aligned in the y direction for AVX2 optimization.
-float** FloatArray(int x, int y, bool initialize_value, float value = 0.0f);
-bool RenormalizeFloatArray(float** matrix, int x, int y, float min_value, float max_value);
-bool FreeFloatArray(float** a, int x);
-bool CopyFloatArray(float** source, float** target, int x, int y);
-bool AddPartialFloatArray(float** source, int source_width, int source_height, float** target, int x_offset, int y_offset);  // Add source array to sub-section of target array, at offset.
-bool CopyPartialFloatArray(float** source, int source_x_offset, int source_y_offset, int source_width, int source_height, float** target, int target_x_offset, int target_y_offset);  // Copy source array to sub-section of target array, at offset.
-bool ResetFloatArray(float** matrix, int x, int y, float value);
-void ResetFloatArrayAVX2(float** matrix, int x, int y, __m256* value_vector);
-bool WriteOutFloatArray(float** source, int x, int y, std::string name, float min, float max);
-
-// Matrix operations for boolean arrays that are 32-bit aligned in the y direction for AVX2 optimization.
-bool** BoolArray(int x, int y, bool value);
-bool FreeBoolArray(bool** a, int x);
-
-bool Convolve(const float* input, float* output, float** kernel, const int pad_width, const int pad_height, const int kernel_radius);  // AVX2 optimized convolution function.
-float* PadMatrix(float** input, int x, int y, int min_pad, int& pad_width, int& pad_height, float background = 0.0f);  // Function to create a matrix for Convolve function.
-bool FreePadMatrix(float* matrix);  // Free the padded matrix used for the Convolve function.

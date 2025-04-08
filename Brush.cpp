@@ -29,6 +29,11 @@ FloatPointPair Bristle::GetUnadjustedOffset()
 	return offset;
 }
 
+FloatPointPair Bristle::GetWander()
+{
+	return wander;
+}
+
 float Bristle::GetFlowDiff()
 {
 	return flow_difference;
@@ -74,6 +79,7 @@ bool Bristle::SetBristleDown(bool d)
 	return true;
 }
 
+
 Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_Properties prop, Paper* paper, int pigment_index)
 {
 	paint_prop = prop;
@@ -81,9 +87,12 @@ Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_P
 	color = c;
 	second = sec;
 	bristle_kernel = NULL;
+
 	watercolor = prop.watercolor;
+#ifdef USE_CUDA
 	watercolor_paper = paper;
 	watercolor_pigment_index = pigment_index;
+
 
 	if (watercolor)
 	{
@@ -98,7 +107,7 @@ Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_P
 			watercolor_pigment_index = watercolor_paper->SetPigment(pgmnt);
 		}
 	}
-
+#endif
 	if (paint_prop.brush_width_override)
 	{
 		brush_width = paint_prop.brush_width;
@@ -153,23 +162,18 @@ Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_P
 	std::uniform_real_distribution<> wide_dist(-brush_width, brush_width);
 	std::uniform_real_distribution<> deep_dist(-brush_depth, brush_depth);
 
-	bristle_kernel = (float**)malloc(sizeof(float*) * 3);
+	int bristle_kernel_side = 1 + BRISTLE_KERNEL / 2;
+	bristle_kernel = (float*)malloc(sizeof(float) * bristle_kernel_side * bristle_kernel_side);
 	if (NULL == bristle_kernel)
 	{
 		throw std::runtime_error("Error allocating memory for bristle_kernel.\n");
 		return;
 	}
-	for (int i = 0; i <= 2; ++i)
+	for (int i = 0; i < bristle_kernel_side; ++i)
 	{
-		bristle_kernel[i] = (float*)malloc(sizeof(float) * 3);
-		if (NULL == bristle_kernel[i])
+		for (int j = 0; j < bristle_kernel_side; ++j)
 		{
-			throw std::runtime_error("Error allocating memory for bristle_kernel.\n");
-			return;
-		}
-		for (int j = 0; j <= 2; ++j)
-		{
-			bristle_kernel[i][j] = exp(-sqrt(i * i + j * j) * prop.bristle_thin_factor);
+			bristle_kernel[i + bristle_kernel_side * j] = exp(-sqrt(i * i + j * j) * prop.bristle_thin_factor);
 		}
 	}
 
@@ -216,19 +220,59 @@ Brush::Brush(FloatPointPair start, Color c, Color sec, float w, float d, Paint_P
 			return;
 		}
 	}
+
+#ifdef USE_CUDA
+	if (watercolor)
+	{
+		host_brush = (cudaBrush*)malloc(sizeof(cudaBrush));
+		if (NULL == host_brush)
+		{
+			throw std::runtime_error("Failed to allocate memory for host_brush in Brush constructor.\n");
+			return;
+		}
+		host_brush->bristles = NULL;
+		host_brush->bristle_kernel = bristle_kernel;
+		host_brush->brush_depth = brush_depth;
+		host_brush->brush_width = brush_width;
+		host_brush->color = color;
+		host_brush->location = location;
+		host_brush->num_bristles = num_bristles;
+		host_brush->orientation = orientation;
+		host_brush->paint_prop = paint_prop;
+		host_brush->second = second;
+		host_brush->shape = shape;
+		host_brush->watercolor = watercolor;
+		host_brush->watercolor_paper = watercolor_paper;
+		host_brush->watercolor_pigment_index = watercolor_pigment_index;
+		host_brush->M = watercolor_paper->GetM();
+		host_brush->s = watercolor_paper->GetS();
+		host_brush->p = watercolor_paper->GetP();
+		host_brush->full_g = watercolor_paper->GetFullG();
+		host_brush->sparse_g = watercolor_paper->GetPigments()[watercolor_pigment_index]->Get_g();  // Does this work?
+		host_brush->width = paper->GetWidth();
+		host_brush->height = paper->GetHeight();
+		device_brush = CreateCudaBrush(host_brush, bristles);
+	}
+#endif
 }
 
 Brush::~Brush()
 {
+#ifdef USE_CUDA
+	if (watercolor)
+	{
+		if (NULL != device_brush)
+		{
+			FreeCudaBrush(device_brush, host_brush->bristles, host_brush->bristle_kernel);
+		}
+		if (NULL != host_brush)
+		{
+			free(host_brush);
+		}
+	}
+#endif
 	if (NULL != bristle_kernel)
 	{
-		for (int i = 0; i <= 2; ++i)
-		{
-			if (NULL != bristle_kernel[i])
-			{
-				free(bristle_kernel[i]);
-			}
-		}
 		free(bristle_kernel);
 	}
 	if (bristles.size() > 0)
@@ -247,13 +291,19 @@ Brush::~Brush()
 
 bool Brush::MoveTo(FloatPointPair loc)
 {
-	//location.x = loc.x * paint_scale;
-	//location.y = loc.y * paint_scale;
+	bool ret = true;
 	location = loc;
-	return true;
+#ifdef USE_CUDA
+	if (watercolor)
+	{
+		ret = SetCudaBrushLocation(device_brush, location);
+		host_brush->location = location;
+	}
+#endif
+	return ret;
 }
 
-bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, float rad1, float rad2, bool begin, SPixelData* extinguish_mask)
+bool Brush::PaintTo(FloatPointPair p2, FloatPointPair o2, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, float rad1, float rad2, bool begin, SPixelData* extinguish_mask)
 {
 	FloatPointPair p1 = { 0, 0 }, p_temp = { 0, 0 }, direction = { 0, 0 };
 	float gradient;
@@ -303,7 +353,7 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	int iterations;
 	FloatPointPair current_location;
 	p1 = location;
-	if ((p1.x == p2.x) && (p1.y == p2.y))
+	if ((false == watercolor) && (p1.x == p2.x) && (p1.y == p2.y))
 	{
 		if (use_mask)
 		{
@@ -319,19 +369,25 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	dy = p2.y - p1.y;
 	float dist = sqrt(dx * dx + dy * dy);
 	float factor;
-	if (r2 > r1)
+	if (abs(cos(delta_orientation)) > EFFECTIVE_ZERO)  // Test to avoid tan(delta_orientation) going to infinity.
 	{
-		factor = 1.0f + r2 * abs(tan(abs(delta_orientation))) / dist;
+		if (r2 > r1)
+		{
+			factor = 1.0f + r2 * abs(tan(abs(delta_orientation))) / dist;
+		}
+		else {
+			factor = 1.0f + r1 * abs(tan(abs(delta_orientation))) / dist;
+		}
+		if (factor < 1.0f)
+		{
+			factor = 1.0f;
+		}
+		else if (factor > MAX_CURVE_FACTOR)
+		{
+			factor = MAX_CURVE_FACTOR;
+		}
 	}
 	else {
-		factor = 1.0f + r1 * abs(tan(abs(delta_orientation))) / dist;
-	}
-	if (factor < 1.0f)
-	{
-		factor = 1.0f;
-	}
-	else if (factor > MAX_CURVE_FACTOR)
-	{
 		factor = MAX_CURVE_FACTOR;
 	}
 
@@ -374,10 +430,22 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 	if (!use_mask)
 	{
 		mask = NULL;
-		//		mask_value = 0;
 	}
-
+#ifdef USE_CUDA
+	Pigment* local_pigment = NULL;
+	SparseFloatMatrix* local_g_sparse = NULL;
+	if (watercolor)
+	{
+		local_pigment = watercolor_paper->GetPigments()[watercolor_pigment_index];
+		local_g_sparse = local_pigment->Get_g();
+		CudaDab3(device_brush, local_g_sparse, dab_saturation, dab_concentration, direction, num_bristles, mask, mask_value, r1, begin, paint_prop.paint_scale);
+	}
+	else {
+		Dab3(direction, data, width, height, mask, mask_value, r1, begin, extinguish_mask);
+	}
+#else
 	Dab3(direction, data, width, height, mask, mask_value, r1, begin, extinguish_mask);
+#endif
 	for (int i = 0; i < iterations; ++i)
 	{
 		if (steep)
@@ -403,8 +471,25 @@ bool Brush::PaintTo2(FloatPointPair p2, FloatPointPair o2, float* data, int widt
 		direction.y = sin(orient1);
 		MoveTo(current_location);
 		SetOrientation(orient1);
+#ifdef USE_CUDA
+		if (watercolor)
+		{
+			CudaDab3(device_brush, local_g_sparse, dab_saturation, dab_concentration, direction, num_bristles, mask, mask_value, r1, begin, paint_prop.paint_scale);
+			watercolor_paper->SetVelocity(current_location.x, current_location.y, brush_velocity * direction.x, brush_velocity * direction.y, false, false);
+		}
+		else {
+			Dab3(direction, data, width, height, mask, mask_value, r1, false, extinguish_mask);
+		}
+#else
 		Dab3(direction, data, width, height, mask, mask_value, r1, false, extinguish_mask);
+#endif
 	}
+#ifdef USE_CUDA
+	if (watercolor)
+	{
+		watercolor_paper->SetVelocity(current_location.x, current_location.y, 0, 0, true, true);
+	}
+#endif
 	MoveTo(p2);
 	SetOrientation(orient2);
 	return true;
@@ -420,7 +505,7 @@ bool Brush::ChangeColor(Color c, Color sec)
 bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, SPixelData* mask, int mask_value, float spot_radius, bool begin, SPixelData* extinguish_mask)
 {
 	// Use direction to measure whether the movement has been forward.
-	if ((abs(direction.x) > EFFECTIVE_ZERO) && (abs(direction.y) > EFFECTIVE_ZERO))
+	if ((abs(direction.x) > EFFECTIVE_ZERO) || (abs(direction.y) > EFFECTIVE_ZERO))
 	{
 		float magnitude = sqrt(direction.x * direction.x + direction.y * direction.y);
 		direction.x = direction.x / magnitude;
@@ -430,6 +515,7 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 	float scaled_spot_radius_squared = spot_radius * spot_radius * paint_prop.paint_scale * paint_prop.paint_scale;
 	bool new_stroke = false;
 	bool extinguish = (NULL != extinguish_mask);
+	int bristle_kernel_side = 1 + BRISTLE_KERNEL / 2;
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -515,16 +601,18 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 			(new_stroke || ((movement_distance >= 1.0))))  // But we also need to either have a new stroke or sufficient movement distance.
 		{
 			bristle->SetLast(bristle_location);
+#ifdef USE_CUDA
 			if (watercolor)
 			{
 				watercolor_paper->Dab((int)x, (int)y, 5, 0.6, (flow_diff + paint_prop.flow) / 5000.0, watercolor_pigment_index);  // *** Try doing a single pass of the Superpixel with uniform concentration, and velocity from path. ***
 				// Just need to adjust velocity.
-				watercolor_paper->SetVelocity((int)x, (int)y, direction.x/1000.0f, direction.y/1000.0f, true);
+				watercolor_paper->SetVelocity((int)x, (int)y, direction.x / 1000.0f, direction.y / 1000.0f, true);
 			}
 			else {
-				for (int i = -2; i <= 2; ++i)
+#endif
+				for (int i = -(bristle_kernel_side - 1); i < bristle_kernel_side; ++i)
 				{
-					for (int j = -2; j <= 2; ++j)
+					for (int j = -(bristle_kernel_side - 1); j < bristle_kernel_side; ++j)
 					{
 						float adjustment;
 						x = bristle_location.x + i;
@@ -534,7 +622,7 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 							adjustment = KernelAdjustment(i, j, x, y);
 						}
 						else {
-							adjustment = bristle_kernel[abs(i)][abs(j)];
+							adjustment = bristle_kernel[abs(i) + bristle_kernel_side * abs(j)];
 						}
 
 						float adjusted_flow = (flow_diff + paint_prop.flow) * adjustment;
@@ -590,7 +678,9 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 						}
 					}
 				}
+#ifdef USE_CUDA
 			}
+#endif
 		}
 		if (Adjust(gen) < 0.1)
 		{
@@ -625,7 +715,7 @@ bool Brush::Dab3(FloatPointPair direction, float* data, int width, int height, S
 	return true;
 }
 
-bool Brush::PaintCorner2(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, SPixelData* extinguish_mask)
+bool Brush::PaintCorner(Corner corner, float* data, int width, int height, SPixelData* mask, int mask_value, bool use_mask, SPixelData* extinguish_mask)
 {
 	float chord_length = sqrt((corner.p0.x - corner.p1.x) * (corner.p0.x - corner.p1.x) + (corner.p0.y - corner.p1.y) * (corner.p0.y - corner.p1.y));
 	float leg1 = sqrt((corner.p0.x - corner.c0.x) * (corner.p0.x - corner.c0.x) + (corner.p0.y - corner.c0.y) * (corner.p0.y - corner.c0.y));
@@ -671,7 +761,7 @@ bool Brush::PaintCorner2(Corner corner, float* data, int width, int height, SPix
 		N1.y = M2.y * p + M1.y * np;
 		direction.x = M2.x - M1.x;
 		direction.y = M2.y - M1.y;
-		PaintTo2(N1, direction, data, width, height, mask, mask_value, use_mask, local_radius, (local_radius + dr), 0 == i, extinguish_mask);
+		PaintTo(N1, direction, data, width, height, mask, mask_value, use_mask, local_radius, (local_radius + dr), 0 == i, extinguish_mask);
 
 		local_radius += dr;
 	}
@@ -739,7 +829,7 @@ bool Brush::ExtinguishCorner(Corner corner, float* data, int width, int height, 
 
 bool Brush::SetOrientation(FloatPointPair o)
 {
-
+	bool ret = true;
 	if (abs(o.x) > EFFECTIVE_ZERO)
 	{
 		SetOrientation(atan2(o.y, o.x));
@@ -747,17 +837,26 @@ bool Brush::SetOrientation(FloatPointPair o)
 	else {
 		if (o.y > 0)
 		{
-			orientation = M_PI / 2;
+			orientation = M_PI / 2.0;
 		}
 		else {
-			orientation = 3 * M_PI / 2;
+			orientation = 3.0 * M_PI / 2.0;  // Use positive values instead of negative.
 		}
+#ifdef USE_CUDA
+		if (watercolor)
+		{
+			ret = SetCudaBrushOrientation(device_brush, orientation);
+			host_brush->orientation = orientation;
+		}
+#endif
 	}
-	return true;
+	return ret;
 }
 
 bool Brush::SetOrientation(float o)
 {
+	bool ret = true;
+	// Ensure orientation value is between 0 and 2*PI.
 	while (o > 2 * M_PI)
 	{
 		o -= 2 * M_PI;
@@ -767,7 +866,14 @@ bool Brush::SetOrientation(float o)
 		o += 2 * M_PI;
 	}
 	orientation = o;
-	return true;
+#ifdef USE_CUDA
+	if (watercolor)
+	{
+		ret = SetCudaBrushOrientation(device_brush, orientation);
+		host_brush->orientation = orientation;
+	}
+#endif
+	return ret;
 }
 
 float Brush::GetOrientation()
@@ -835,24 +941,25 @@ float Brush::KernelAdjustment(int i, int j, float x, float y)
 
 	int k = i;
 	int l = j;
-	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	int bristle_kernel_side = 1 + BRISTLE_KERNEL / 2;
+	if ((k > -bristle_kernel_side) && (k < bristle_kernel_side) && (l > -bristle_kernel_side) && (l < bristle_kernel_side))
 	{
-		ret += bristle_kernel[abs(k)][abs(l)] * f00;
+		ret += bristle_kernel[abs(k) + bristle_kernel_side * abs(l)] * f00;
 	}
 	k--;
-	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	if ((k > -bristle_kernel_side) && (k < bristle_kernel_side) && (l > -bristle_kernel_side) && (l < bristle_kernel_side))
 	{
-		ret += bristle_kernel[abs(k)][abs(l)] * f10;
+		ret += bristle_kernel[abs(k) + bristle_kernel_side * abs(l)] * f10;
 	}
 	l--;
-	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	if ((k > -bristle_kernel_side) && (k < bristle_kernel_side) && (l > -bristle_kernel_side) && (l < bristle_kernel_side))
 	{
-		ret += bristle_kernel[abs(k)][abs(l)] * f11;
+		ret += bristle_kernel[abs(k) + bristle_kernel_side * abs(l)] * f11;
 	}
 	k++;
-	if ((k > -3) && (k < 3) && (l > -3) && (l < 3))
+	if ((k > -bristle_kernel_side) && (k < bristle_kernel_side) && (l > -bristle_kernel_side) && (l < bristle_kernel_side))
 	{
-		ret += bristle_kernel[abs(k)][abs(l)] * f01;
+		ret += bristle_kernel[abs(k) + bristle_kernel_side * abs(l)] * f01;
 	}
 	return ret;
 }
@@ -1041,3 +1148,23 @@ bool Brush::ExtinguishLineSegment(std::array<FloatPointPair, 2> points, int widt
 	}
 	return true;
 }
+
+#ifdef USE_CUDA
+bool Brush::GetWatercolor()
+{
+	return watercolor;
+}
+
+bool Brush::StrokeBegin()
+{
+	bool ret = true;
+	ret = StartStroke(watercolor_paper->GetPigments()[watercolor_pigment_index]->Get_g(), watercolor_paper->GetFullG(), watercolor_paper->GetWidth(), watercolor_paper->GetHeight());
+	return ret;
+}
+bool Brush::StrokeEnd()
+{
+	bool ret = true;
+	ret = EndStroke(watercolor_paper->GetPigments()[watercolor_pigment_index]->Get_g(), watercolor_paper->GetFullG(), watercolor_paper->GetWidth(), watercolor_paper->GetHeight());
+	return ret;
+}
+#endif

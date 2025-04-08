@@ -14,6 +14,9 @@ SPixelData::SPixelData(int w, int h)
 	{
 		throw (std::runtime_error("Unable to allocate memory for SPixelData data.\n"));
 	}
+#ifdef USE_CUDA
+	c_device_data = IntArray(w, h, true, 0);
+#endif
 	Reset();
 }
 SPixelData::SPixelData(const SPixelData& t)
@@ -30,6 +33,13 @@ SPixelData::SPixelData(const SPixelData& t)
 	{
 		data[pos] = t.data[pos];
 	}
+#ifdef USE_CUDA
+	c_device_data = IntArray(width, height, false);
+	if (!CopyFromHost(data, width * height, c_device_data))
+	{
+		throw std::runtime_error("Failed to copy SPixelData to c_device_data.\n");
+	}
+#endif
 	meeting_points = t.meeting_points;
 }
 
@@ -39,6 +49,9 @@ SPixelData::~SPixelData()
 	{
 		free(data);
 	}
+#ifdef USE_CUDA
+	FreeIntArray(c_device_data);
+#endif
 	meeting_points.clear();
 }
 
@@ -158,27 +171,41 @@ bool SPixelData::Reset()
 {
 	int max_pos = width * height;
 	memset(data, 0, max_pos * sizeof(int));
-	//for (int pos = 0; pos < max_pos; pos++)
-	//{
-	//	data[pos] = 0;
-	//}
+#ifdef USE_CUDA
+	c_device_data = IntArray(width, height, false);
+	if (!CopyFromHost(data, max_pos, c_device_data))
+	{
+		throw std::runtime_error("Failed to copy SPixelData to c_device_data in Reset.\n");
+	}
+#endif
 	meeting_points.clear();
 	return true;
 }
 
 bool SPixelData::CopyData(SPixelData* sp)
 {
+	bool ret = true;
 	if ((sp->height != height) || (sp->width != width))
 	{
 		throw std::runtime_error("Size mismatch for SPixelData Swap.\n");
-		return false;
+		ret = false;
 	}
-	int max_pos = width * height;
-	for (int pos = 0; pos < max_pos; pos++)
-	{
-		data[pos] = sp->data[pos];
+	else {
+		int max_pos = width * height;
+		for (int pos = 0; pos < max_pos; pos++)
+		{
+			data[pos] = sp->data[pos];
+		}
+#ifdef USE_CUDA
+		c_device_data = IntArray(width, height, false);
+		if (!CopyFromHost(data, max_pos, c_device_data))
+		{
+			throw std::runtime_error("Failed to copy SPixelData to c_device_data in CopyData.\n");
+			ret = false;
+		}
+#endif
 	}
-	return true;
+	return ret;
 }
 
 bool SPixelData::erode(int mode, int struct_size)
@@ -1204,4 +1231,20 @@ bool SPixelData::FloodReplace(int p, int orig, int updated)
 	return true;
 }
 
+#ifdef USE_CUDA
+bool SPixelData::SyncToDevice()
+{
+	bool ret = true;
+	if (!CopyFromHost(data, width*height, c_device_data))
+	{
+		throw std::runtime_error("Failed to copy SPixelData to c_device_data in SyncToDevice.\n");
+		ret = false;
+	}
+	return ret;
+}
+int* SPixelData::GetDeviceData()
+{
+	return c_device_data;
+}
+#endif
 

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.33424.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Image_Art", "Image_Art.vcxproj", "{52F19C29-C606-4C44-9C1F-CF8E1BDCE93E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cuda_Image_Art", "..\Cuda_Image_Art\Cuda_Image_Art.vcxproj", "{248E02A9-A6F1-493E-A746-8081A595FB3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{52F19C29-C606-4C44-9C1F-CF8E1BDCE93E}.Release|x64.Build.0 = Release|x64
 		{52F19C29-C606-4C44-9C1F-CF8E1BDCE93E}.Release|x86.ActiveCfg = Release|Win32
 		{52F19C29-C606-4C44-9C1F-CF8E1BDCE93E}.Release|x86.Build.0 = Release|Win32
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Debug|x64.ActiveCfg = Debug|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Debug|x64.Build.0 = Debug|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Debug|x86.ActiveCfg = Debug|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Debug|x86.Build.0 = Debug|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x64.ActiveCfg = Release|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x64.Build.0 = Release|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x86.ActiveCfg = Release|x64
+		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

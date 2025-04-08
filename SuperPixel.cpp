@@ -1337,7 +1337,9 @@ bool SuperPixel::SeparateDiscontinuousSuperPixel()
 			throw std::runtime_error("Path point not in original set.\n");
 			return false;
 		}
-
+#ifdef USE_CUDA
+		pixeldata->SyncToDevice();
+#endif
 		// Step 5: Calculate new bounding boxes.
 		RectQuad orig_box = { 0,0,0,0 };
 		RectQuad new_box = { 0,0,0,0 };
@@ -1845,6 +1847,10 @@ bool SuperPixel::CheckVertex(int v, bool check_neighbors)
 
 std::vector<int> SuperPixel::write_data()
 {
+	// This function returns a sequence of numbers that, when written to the data file, specifies what pixels make up this superpixel.
+	// The sequence for each row is simply the number of pixels that are not in the superpixel, followed by the number that are, followed by the number not, etc.
+	// The first number for each row is always the number of pixels from the left that are not part of the superpixel (which might be zero).
+
 	int width = (boundingbox.x1 - boundingbox.x0 + 1);
 	int height = (boundingbox.y1 - boundingbox.y0 + 1);
 	int count;
@@ -1856,16 +1862,16 @@ std::vector<int> SuperPixel::write_data()
 	{
 		i = 0;
 		count = 0;
-		while ((i < width) && (identifier != pixeldata->GetPixel(i + boundingbox.x0, j + boundingbox.y0)))  // Always start with zero
+		while ((i < width) && (identifier != pixeldata->GetPixel(i + boundingbox.x0, j + boundingbox.y0)))  // Always start with false
 		{
 			count++;
 			i++;
 		}
-		ret.push_back(count);
+		ret.push_back(count); // This will be the number of pixels from the left that are not in the superpixel.  Anywhere from zero to the full width.
 		while (i < width)
 		{
 			count = 0;
-			while ((i < width) && (identifier == pixeldata->GetPixel(i + boundingbox.x0, j + boundingbox.y0)))  // Count ones
+			while ((i < width) && (identifier == pixeldata->GetPixel(i + boundingbox.x0, j + boundingbox.y0)))  // Count trues
 			{
 				count++;
 				i++;
@@ -1878,7 +1884,7 @@ std::vector<int> SuperPixel::write_data()
 				break;
 			}
 			count = 0;
-			while ((i < width) && (identifier != pixeldata->GetPixel(i + boundingbox.x0, j + boundingbox.y0)))  // Count zeros
+			while ((i < width) && (identifier != pixeldata->GetPixel(i + boundingbox.x0, j + boundingbox.y0)))  // Count falses
 			{
 				count++;
 				i++;

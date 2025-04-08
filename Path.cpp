@@ -8,6 +8,8 @@ Path::Path(SuperPixel* sp, PointPair start, bool use_meeting_points, bool create
 {
 	// closed indicates whether this is a closed polygon or an unclosed line.
 
+	next = NULL;
+	prev = NULL;
 	subpath = NULL;
 	superpixel = sp;
 	begin_endpoint = beg_ep;

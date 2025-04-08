@@ -455,7 +455,7 @@ WorkSpace::WorkSpace(std::string filename, int channel, int nchannel, bool d)
 
 WorkSpace::WorkSpace(std::string sp_filename, bool d)
 {
-
+	// For reading in superpixel data from a file.
 	data = NULL;
 	image = NULL;
 	gray = NULL;
@@ -1082,10 +1082,10 @@ bool WorkSpace::WriteSuperPixels(std::string filename)
 
 	while (NULL != current)
 	{
-		int identifier = current->GetIdentifier();
-		PointPair seed = current->GetSeed();
-		RectQuad box = current->GetWindow();
-		Color color = current->GetAveColor();
+		int identifier = current->GetIdentifier(); // The unique number that identifies this superpixel.
+		PointPair seed = current->GetSeed(); // The x and y location of the seed for the superpixel.
+		RectQuad box = current->GetWindow(); // The rectangle in which the superpixel is located.
+		Color color = current->GetAveColor(); // The average color of the pixels in the original image in the locations that are part of this superpixel.
 
 		ofile.write(reinterpret_cast<const char*>(&identifier), sizeof(identifier));
 		ofile.write(reinterpret_cast<const char*>(&seed.x), sizeof(seed.x));
@@ -1928,7 +1928,7 @@ bool WorkSpace::DeleteSuperPixelSet(SuperPixel* sp)
 	return true;
 }
 
-ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revise method for watercolor.  Fill in entire Superpixel, adjust velocities and pressures using skeletons. ***
+ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 // Mode: 0=normal
 //       1=post-processed
 //       2=skeleton
@@ -1944,23 +1944,23 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 	Color bg;
 	if (0 == prop.background)
 	{
-		bg.channel[0] = 255;
-		bg.channel[1] = 255;
-		bg.channel[2] = 255;
+		bg.channel[0] = 255.0;
+		bg.channel[1] = 255.0;
+		bg.channel[2] = 255.0;
 	}
 	else {
-		bg.channel[0] = 0;
-		bg.channel[1] = 0;
-		bg.channel[2] = 0;
+		bg.channel[0] = 0.0;
+		bg.channel[1] = 0.0;
+		bg.channel[2] = 0.0;
 	}
 	Color black;
-	black.channel[0] = 0;
-	black.channel[1] = 0;
-	black.channel[2] = 0;
+	black.channel[0] = 0.0;
+	black.channel[1] = 0.0;
+	black.channel[2] = 0.0;
 	Color white;
-	white.channel[0] = 255;
-	white.channel[1] = 255;
-	white.channel[2] = 255;
+	white.channel[0] = 255.0;
+	white.channel[1] = 255.0;
+	white.channel[2] = 255.0;
 
 	if (0 == mode)
 	{
@@ -2011,7 +2011,11 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 			throw std::runtime_error("Unable to allocate memory for paint image.\n");
 			return img;
 		}
+#ifdef USE_CUDA
 		img = new ImageData(img_data, scale_width, scale_height, 3, true, prop.watercolor);
+#else
+		img = new ImageData(img_data, scale_width, scale_height, 3, true);
+#endif
 		img->SetBackground(bg);
 		// Skeleton path painting
 		current = skeleton_head;
@@ -2035,25 +2039,18 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 		while (current != NULL)
 		{
 			count++;
+#ifdef USE_CUDA
 			if (prop.watercolor)
 			{
 				Color color = current->GetAveColor();
 				Paper* localpaper = img->GetPaper();
 				Pigment* pgmnt = new Pigment(localpaper->GetWidth(), localpaper->GetHeight(), &color, 0.2, 0.01, 1.0, 0.31);
 				watercolor_pigment_index = localpaper->SetPigment(pgmnt);
-				RectQuad window = current->GetWindow();
-				int identifier = current->GetIdentifier();
-				//for (int i = window.x0; i <= window.x1; ++i)
-				//{
-				//	for (int j = window.y0; j <= window.y1; j++)
-				//	{
-				//		if (local_pixdata->GetPixel(i, j) == identifier)
-				//		{
-				//			localpaper->Dab(i, j, 0, 0.3, 1.3, watercolor_pigment_index); // wet: 0.6 saturation 1.3 concentration dry: 0.3, 1.3
-				//		}
-				//	}
-				//}
+				//RectQuad window = current->GetWindow();
+				//int identifier = current->GetIdentifier();
+				//localpaper->PaintArea(local_pixdata->GetDeviceData(), width, height, window, identifier, 0.3, 1.8, watercolor_pigment_index);
 			}
+#endif
 			Path* curve_path = current->GetPathHead();
 			while (NULL != curve_path)
 			{
@@ -2087,10 +2084,12 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 				}
 				curve_path = curve_path->GetNext();
 			}
+
+#ifdef USE_CUDA
 			if (prop.watercolor)
 			{
 				std::cout << "\n" << count << "/" << set_size << "\n";
-				if (false && (0 == count % 5))
+				if (0 == count % 500)
 				{
 					if (!img->ProcessWatercolor())
 					{
@@ -2099,6 +2098,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 					}
 				}
 			}
+#endif
 			current = current->GetNext();
 		}
 
@@ -2112,6 +2112,15 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 			else {
 				current = list_head;
 			}
+#ifdef USE_CUDA
+			if (prop.watercolor)
+			{
+				Color color = black;
+				Paper* localpaper = img->GetPaper();
+				Pigment* pgmnt = new Pigment(localpaper->GetWidth(), localpaper->GetHeight(), &color, 0.2, 0.01, 1.0, 0.31);
+				watercolor_pigment_index = localpaper->SetPigment(pgmnt);
+			}
+#endif
 			while (current != NULL)
 			{
 				Path* curve_path = current->GetPathHead();
@@ -2123,12 +2132,13 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 					outline_prop.bristles = 20.0;
 					outline_prop.flow_variation = 0;
 					outline_prop.radius_variation = false;
-					img->CreateBrush({ 100.0, 100.0 }, black, black, 3, outline_prop);
+					img->CreateBrush({ 100.0, 100.0 }, black, black, 3, outline_prop, watercolor_pigment_index);
 					img->PaintCurve(curve, NULL, 0);
 					curve_path = curve_path->GetNext();
 				}
 				current = current->GetNext();
 			}
+#ifdef USE_CUDA
 			if (prop.watercolor)
 			{
 				if (!img->ProcessWatercolor())
@@ -2137,7 +2147,9 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 					return NULL;
 				}
 			}
+#endif
 		}
+#ifdef USE_CUDA
 		if (prop.watercolor)
 		{
 			if (!img->ProcessWatercolor())
@@ -2152,8 +2164,11 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop) // *** Revi
 			}
 		}
 		else {
+#endif
 			img->CollapseWideData(false);
+#ifdef USE_CUDA
 		}
+#endif
 		return img;
 	}
 	else if (4 == mode)
