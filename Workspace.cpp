@@ -2173,6 +2173,9 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 	}
 	else if (4 == mode)
 	{
+#ifdef USE_CUDA
+		return NULL;
+#else
 		WorkSpace* local_workspace = NULL;
 
 		local_workspace = new WorkSpace(*this);
@@ -2186,6 +2189,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 
 		delete local_workspace;
 		return img;
+#endif
 	}
 	else if (44 == mode)  // Should be called only by mode 4 of this same function, but called from the sub-WorkSpace.
 	{
