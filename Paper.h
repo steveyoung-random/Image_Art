@@ -3,7 +3,7 @@
 #include <vector>
 #include <set>
 #include "General.h"
-#include "Brush_CUDA.cuh"
+#include "Cuda_Image_Art\Brush_CUDA.cuh"
 #include <iostream>
 #include <random>
 #include <sstream>

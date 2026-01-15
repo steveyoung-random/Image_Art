@@ -13,11 +13,17 @@ GradData::GradData(unsigned char* gradient, int w, int h)
 	{
 		throw (std::runtime_error("Unable to allocate memory for GradData.\n"));
 	}
+#ifdef USE_CUDA
+	c_device_data = UCharArray(width, height, false);
+#endif
 	int total_pix = width * height;
 	for (int pos = 0; pos < total_pix; pos++)
 	{
 		data[pos] = gradient[pos];
 	}
+#ifdef USE_CUDA
+	CopyFromHost(data, total_pix, c_device_data);
+#endif
 }
 
 GradData::GradData(const GradData& t)
@@ -29,11 +35,19 @@ GradData::GradData(const GradData& t)
 	{
 		throw (std::runtime_error("Unable to allocate memory for GradData.\n"));
 	}
+
 	long total_pix = width * height;
 	for (long pos = 0; pos < total_pix; pos++)
 	{
 		data[pos] = t.data[pos];
 	}
+#ifdef USE_CUDA
+	c_device_data = UCharArray(width, height, false);
+	if (!OnDeviceCopy(t.c_device_data, width * height, c_device_data))
+	{
+		throw std::runtime_error("Failed to copy GradData to c_device_data.\n");
+	}
+#endif
 }
 
 GradData::GradData(std::string filename)
@@ -50,11 +64,16 @@ GradData::GradData(std::string filename)
 	{
 		throw (std::runtime_error("Unable to allocate memory for GradData.\n"));
 	}
+
 	int total_pix = width * height;
 	for (int pos = 0; pos < total_pix; pos++)
 	{
 		data[pos] = data_temp[pos*colorchannels];
 	}
+#ifdef USE_CUDA
+	c_device_data = UCharArray(width, height, false);
+	CopyFromHost(data, total_pix, c_device_data);
+#endif
 	stbi_image_free(data_temp);
 }
 
@@ -64,6 +83,12 @@ GradData::~GradData()
 	{
 		free(data);
 	}
+#ifdef USE_CUDA
+	if (NULL != c_device_data)
+	{
+		FreeUCharArray(c_device_data);
+	}
+#endif
 }
 
 unsigned char GradData::GetPixel(int x, int y)
@@ -104,6 +129,19 @@ GradData* GradData::gen_dilate_erode(bool isdilate, int mode, int struct_size)
 	int x = GetWidth();
 	int y = GetHeight();
 	int hist[256];
+
+#ifdef USE_CUDA
+
+		output = c_gen_dilate_erode(x, y, data, isdilate, mode, struct_size);
+		ret = new GradData(output, x, y);
+		if (NULL == ret)
+		{
+			throw std::runtime_error("Failed to create GradData object in gen_dilate2.\n");
+		}
+		free(output);
+		return ret;
+
+#endif
 
 	output = (unsigned char*)malloc(sizeof(unsigned char) * x * y);
 	if (NULL == output)
@@ -398,6 +436,7 @@ GradData* GradData::gen_dilate_erode(bool isdilate, int mode, int struct_size)
 
 GradData* GradData::gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst)
 {
+	// *** Continue here, adding support for CUDA.
 	unsigned char* edge;
 	GradData* ret = NULL;
 	int x = dilate->GetWidth();

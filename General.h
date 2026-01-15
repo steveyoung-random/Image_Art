@@ -79,7 +79,6 @@
 #define dab_pressure 0.01f // wet: 0.01f dry: 0.01f
 #define dab_concentration 0.0075f // wet: 0.01f dry:
 #define dab_saturation 0.01f // wet: 0.05f dry:
-#define chunk_size 96  // This is the size for chunking out the matrices for efficiency.  * MUST BE A MULTIPLE OF SQUARE ROOT OF 'threads_per_block' * .
 #define brush_velocity 2.0f // The induced velocity during painting.
 
 // Values for AVX2

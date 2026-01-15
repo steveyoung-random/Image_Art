@@ -35,7 +35,7 @@ SPixelData::SPixelData(const SPixelData& t)
 	}
 #ifdef USE_CUDA
 	c_device_data = IntArray(width, height, false);
-	if (!CopyFromHost(data, width * height, c_device_data))
+	if (!OnDeviceCopy(t.c_device_data, width * height, c_device_data))
 	{
 		throw std::runtime_error("Failed to copy SPixelData to c_device_data.\n");
 	}

@@ -19,12 +19,15 @@ class SPixelData;
 void write_png_to_mem(void* context, void* data, int size);
 
 class ImageData {
+	// Multi-channel image data.
 private:
-	unsigned char* data;
-	float* data_wide;
+	unsigned char* data; // The image data.  Stored row-first, red, green, then blue.
+	float* data_wide; // A version of data that allows for much more range per-pixel.
 	int width, height, colorchannels;
 	Brush* brush;
 #ifdef USE_CUDA
+	unsigned char* c_device_data = NULL;  // This is the CUDA on-device version of data.
+	float* c_device_data_wide = NULL; // This is the CUDA on-device version of data_wide.
 	Paper* paper;
 #endif
 	Color background_color;

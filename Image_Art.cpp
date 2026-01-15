@@ -732,6 +732,20 @@ int main(int argc, char** argv)
 				delete gray_image;
 				delete edge;
 				delete preprocessed_gray;
+				//edge = gray->gen_dilate_erode(1, pre_dilate_shape, w_size);
+				//gray_image = edge->Gradient2Image(1);
+				//temppath = path;
+				//temppath.append(OUTPUT).append("_dilate_").append(std::to_string(w_size));
+				//gray_image->write_file(temppath);
+				//delete gray_image;
+				//delete edge;
+				//edge = gray->gen_dilate_erode(0, pre_erode_shape, w_size);
+				//gray_image = edge->Gradient2Image(1);
+				//temppath = path;
+				//temppath.append(OUTPUT).append("_erode_").append(std::to_string(w_size));
+				//gray_image->write_file(temppath);
+				//delete gray_image;
+				//delete edge;
 				std::cout << ".";
 			}
 

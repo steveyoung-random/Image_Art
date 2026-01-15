@@ -26,6 +26,9 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 	{
 		throw (std::runtime_error("Unable to allocate memory for ImageData.\n"));
 	}
+#ifdef USE_CUDA
+	c_device_data = UCharArray(w * colorchannels, h, false);
+#endif
 	if (frac_values)
 	{
 		data_wide = (float*)malloc(sizeof(float) * width * height * colorchannels);
@@ -33,6 +36,9 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 		{
 			throw (std::runtime_error("Unable to allocate wide memory for ImageData.\n"));
 		}
+#ifdef USE_CUDA
+		c_device_data_wide = FloatArray(w * colorchannels, h, false);
+#endif
 	}
 	else {
 		data_wide = NULL;
@@ -47,12 +53,24 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 		{
 			data[pos] = data_in[pos];
 		}
+#ifdef USE_CUDA
+		if (!CopyFromHost(data, max_pos, c_device_data))
+		{
+			throw std::runtime_error("Failed to copy c_device_data to device in ImageData constructor.\n");
+		}
+#endif
 		if (frac_values)
 		{
 			for (int pos = 0; pos < max_pos; pos++)
 			{
 				data_wide[pos] = (float)data_in[pos];
 			}
+#ifdef USE_CUDA
+			if (!CopyFromHost(data_wide, max_pos, c_device_data_wide))
+			{
+				throw std::runtime_error("Failed to copy c_device_data_wide to device in ImageData constructor.\n");
+			}
+#endif
 		}
 	}
 #ifdef USE_CUDA
@@ -84,6 +102,14 @@ ImageData::~ImageData()
 	if (NULL != paper)
 	{
 		delete(paper);
+	}
+	if (NULL != c_device_data)
+	{
+		FreeUCharArray(c_device_data);
+	}
+	if (NULL != c_device_data_wide)
+	{
+		FreeFloatArray(c_device_data_wide);
 	}
 #endif
 }
@@ -274,12 +300,26 @@ bool ImageData::Reset()
 	{
 		data[pos] = 0;
 	}
+#ifdef USE_CUDA
+	if (!ResetUCharArray(c_device_data, width, height * colorchannels, 0))
+	{
+		throw std::runtime_error("Unable to reset c_device_data in ImageData::Reset().\n");
+		return false;
+	}
+#endif
 	if (NULL != data_wide)
 	{
 		for (int pos = 0; pos < max_pos; pos++)
 		{
 			data_wide[pos] = 0;
 		}
+#ifdef USE_CUDA
+		if (!ResetFloatArray(c_device_data_wide, width, height * colorchannels, 0))
+		{
+			throw std::runtime_error("Unable to reset c_device_data_wide in ImageData::Reset().\n");
+			return false;
+		}
+#endif
 	}
 	return true;
 }
@@ -367,13 +407,27 @@ GradData* ImageData::gen_gray(int channel, int nchannel)
 	int w = GetWidth();
 	int h = GetHeight();
 	int n = GetColorChannels();
+#ifdef USE_CUDA
+	unsigned char* c_device_gray = UCharArray(w, h, false);
+#endif
 	gray = (unsigned char*)malloc(sizeof(unsigned char) * w * h);
 	if (NULL == gray)
 	{
 		throw (std::runtime_error("Unable to allocate memory for gray image.\n"));
 		return NULL;
 	}
-
+#ifdef USE_CUDA
+	if (!c_gen_gray(c_device_data, w, h, n, channel, nchannel, c_device_gray))
+	{
+		throw std::runtime_error("Error processing c_gen_gray in ImageData::gen_gray.\n");
+		return NULL;
+	}
+	if (!CopyToHost(c_device_gray, w * h, gray))
+	{
+		throw std::runtime_error("Error copying data to host in ImageData::gen_gray.\n");
+		return NULL;
+	}
+#else
 	if (n > 2)
 	{
 		if (0 == channel)
@@ -430,10 +484,11 @@ GradData* ImageData::gen_gray(int channel, int nchannel)
 			{
 				Color c = GetPixel(i, j);
 				long pos = j * w + i;
-				gray[pos] = c.channel[i];
+				gray[pos] = c.channel[0];
 			}
 		}
 	}
+#endif
 
 	ret = new GradData(gray, w, h);
 	if (NULL == ret)
@@ -441,6 +496,9 @@ GradData* ImageData::gen_gray(int channel, int nchannel)
 		throw std::runtime_error("Failed to create GradData object in gen_gray.\n");
 	}
 	free(gray);
+#ifdef USE_CUDA
+	FreeUCharArray(c_device_gray);
+#endif
 	return ret;
 }
 

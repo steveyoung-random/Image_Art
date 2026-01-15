@@ -8,12 +8,20 @@
 #include "stb_image.h"
 #include <sstream>
 #include <string>
+#ifdef USE_CUDA
+#include "Cuda_Image_Art\Image_CUDA.cuh"
+#endif
 
 class ImageData;
 
 class GradData {
+	// Object for storing one-channel image data.  Name refers to gradiant data, which is
+	// stored in this format.  Effectively, though, this is used for monochromatic images.
 private:
-	unsigned char* data = NULL;
+	unsigned char* data = NULL; // The image data, stored in row major form.
+#ifdef USE_CUDA
+	unsigned char* c_device_data = NULL;  // This is the CUDA on-device version of data.
+#endif
 	int width, height;
 public:
 	GradData(unsigned char* gradient, int w, int h);

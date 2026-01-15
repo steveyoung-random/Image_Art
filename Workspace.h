@@ -55,7 +55,7 @@ private:
 	GradData* dilate = NULL;
 	GradData* erode = NULL;
 	GradData* edge = NULL;
-	unsigned char* data = NULL;
+	unsigned char* data = NULL; // Image data loaded by stbi_load and released by stbi_image_free.
 	ImageData* data_revised = NULL;
 	GradData* data_diff = NULL;
 	ImageData* image = NULL;
@@ -132,8 +132,4 @@ public:
 	GradData* gen_dilate_erode(GradData* gray, bool dilate, int mode, int struct_size);
 	GradData* gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst);
 	bool Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize);
-
-	// Deprecated
-	GradData* gen_dilate(GradData* gray, int mode, int struct_size);
-	GradData* gen_erode(GradData* gray, int mode, int struct_size);
 };

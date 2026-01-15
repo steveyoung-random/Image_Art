@@ -1,5 +1,5 @@
 #include "Paper.h"
-#include "Brush_CUDA.cuh"
+#include "CUDA_Image_Art\Brush_CUDA.cuh"
 
 bool Paper::PaperSlope()  // Induces velocities in the water due to paper slopes.
 {

@@ -12,7 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Brush.h" />
-    <ClInclude Include="..\Brush_CUDA.cuh" />
     <ClInclude Include="..\Cell.h" />
     <ClInclude Include="..\General.h" />
     <ClInclude Include="..\GradData.h" />
@@ -26,6 +25,9 @@
     <ClInclude Include="..\stb_image_write.h" />
     <ClInclude Include="..\SuperPixel.h" />
     <ClInclude Include="..\Workspace.h" />
+    <ClInclude Include="Brush_CUDA.cuh" />
+    <ClInclude Include="Image_CUDA.cuh" />
+    <ClInclude Include="Utils_CUDA.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Brush.cpp" />
@@ -42,7 +44,9 @@
     <ClCompile Include="..\Workspace.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\Brush_CUDA.cu" />
+    <CudaCompile Include="Brush_CUDA.cu" />
+    <CudaCompile Include="Image_CUDA.cu" />
+    <CudaCompile Include="Utils_CUDA.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{248E02A9-A6F1-493E-A746-8081A595FB3B}</ProjectGuid>
@@ -80,7 +84,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USE_CUDA;WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
