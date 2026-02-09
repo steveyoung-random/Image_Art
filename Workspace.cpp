@@ -1723,7 +1723,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop, watercolor_pigment_index);
 				if (prop.paint_mask)
 				{
-					img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
+						img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
 				}
 				else {
 					img->PaintCurve(curve, NULL, 0);
@@ -1801,7 +1801,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		}
 #ifdef USE_CUDA
 		if (prop.watercolor)
-		{
+		{			
 			if (!img->ProcessWatercolor())
 			{
 				throw std::runtime_error("Error on ProcessWatercolor function call from GenerateImage.\n");

@@ -539,7 +539,7 @@ bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 	int direction = 0;
 	int initial_direction = 0;
 	bool first_flag = true;
-	int cumulative_directions = 0;
+	int cumulative_directions = 0; // Accumalates turn values to determine whether overall turns are to the right or left.
 	point_set.clear();
 	PointPair initial_point;
 	PointPair offset;
@@ -557,7 +557,7 @@ bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 
 	PointPair current = start;
 	bool ready = false;
-	while (false == ready)
+	while (false == ready) // Ensure that current is a valid pixel and is not in a corner without any adjacent open pixels.
 	{
 		neighbors = pixeldata->GetNeighbors(identifier, current);
 		if ((-1 == neighbors) || (0 == (neighbors & 85)))
@@ -616,15 +616,15 @@ bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 	{
 		direction = 1;
 	}
-	else if (0 == (neighbors & 4))
+	else if (0 == (neighbors & 4)) // Open to the right
 	{
 		direction = 2;
 	}
-	else if (0 == (neighbors & 16))
+	else if (0 == (neighbors & 16)) // Open below
 	{
 		direction = 3;
 	}
-	else if (0 == (neighbors & 64))
+	else if (0 == (neighbors & 64)) // Open to the left
 	{
 		direction = 4;
 	}
@@ -752,7 +752,8 @@ bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 			boundingbox.y1 = current.y;
 		}
 	}
-	forward = (cumulative_directions > 0);
+	forward = (cumulative_directions > 0); // True if keeping object to the right results in cumulative right turns.
+	// If cumulative turns are to the left, that indicates this is an interior edge (e.g. a hole in an object).
 	if (fine_points.size() > 1)
 	{
 		PointPair p0 = fine_points[0];
@@ -768,6 +769,10 @@ bool Path::CalcPoints(PointPair start, bool use_meeting_points)
 bool Path::CalcForwardSegments(bool use_meeting_points, bool fine)
 {
 	int start = 0;
+	// Consider dropping meeting points.
+	use_meeting_points = false;
+
+	// closed indicates that this is a path around a polygon.  If it is false, this is an open path where the end is not in the same place as the beginning.
 	if (false == closed)
 	{
 		use_meeting_points = false;

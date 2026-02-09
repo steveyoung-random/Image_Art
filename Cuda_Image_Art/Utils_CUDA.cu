@@ -136,7 +136,7 @@ __global__ void process_copy_partial_Float_Array(float* source, int source_width
 		int dst_x = target_x_offset + src_x;
 		int dst_y = target_y_offset + src_y;
 		int dst_idx = dst_y * target_width + dst_x;
-		if (dst_idx < dst_N)
+		if ((dst_x < target_width) && (dst_y < target_height))
 		{
 			target[dst_idx] = source[idx];
 		}
@@ -643,6 +643,12 @@ bool AddPartialFloatArray(float* source, int source_width, int source_height, fl
 bool CopyPartialFloatArray(float* source, int source_width, int source_height, float* target, int target_width, int target_height, int target_x_offset, int target_y_offset)
 {
 	// Copy full source array to sub-section of target array, at offset.
+	// source - the source array
+	// source_width, source_height - size of source array
+	// target - the array into which source array is copied
+	// target_width, target_height - size of target array
+	// target_x_offset, target_y_offset - location in target array where the upper-left location of the source array will be mapped
+
 	bool ret = true;
 	cudaError_t cudaStatus;
 	int blocksPerGrid = (source_width * source_height + threads_per_block - 1) / threads_per_block;
@@ -660,6 +666,14 @@ bool CopyPartialFloatArray(float* source, int source_width, int source_height, f
 bool CopyFloatArrayPortion(float* source, int source_image_width, int source_image_height, int source_x_offset, int source_y_offset, int portion_width, int portion_height, float* target, int target_width, int target_height, int target_x_offset, int target_y_offset)
 {
 	// Copy a portion of the source array to a sub-section of target array, at offset.
+	// source - source array
+	// source_image_width, source_image_height - size of source array
+	// source_x_offset, source_y_offset - upper left location in source array for portion to be copied
+	// portion_width, portion_height - dimensions of window in source array to be copied
+	// target - target array
+	// target_width, target_height - size of target array
+	// target_x_offset, target_y_offset - upper left location in target array for where portion will be copied
+
 	bool ret = true;
 	cudaError_t cudaStatus;
 	int blocksPerGrid = (portion_width * portion_height + threads_per_block - 1) / threads_per_block;

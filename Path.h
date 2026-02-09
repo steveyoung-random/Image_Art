@@ -80,7 +80,7 @@ public:
 	FloatPointPair LinearRegression(int point1, int point2);
 	FloatPointPair SquareNeighborhood(FloatPointPair vertex, FloatPointPair point);
 
-	bool CalcPoints(PointPair start, bool use_meeting_points = true);
+	bool CalcPoints(PointPair start, bool use_meeting_points = true);  // *** It appears use_meeting_points is not used here, can be removed.
 	bool CalcForwardSegments(bool use_meeting_points = true, bool fine = true);
 	bool CalcOptimalSegments();
 	bool CalcSegmentPenalties();
