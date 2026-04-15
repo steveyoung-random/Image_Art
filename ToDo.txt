@@ -1,0 +1,5 @@
+1. Recode the progressive painting routines to work with CUDA.  This will be a little tricky, since we need to keep track of a mask for what has been painted.
+
+2. Decide whether meeting_point should be removed entirely (it is effectively off now). This was intended to make paths of adjacent superpixels use a common point for their paths if that point is shared by three or more superpixels.  The intent was to have the resulting vector shapes more naturally fit together, but it never achieved that.  I turned it off because it was causing other problems.
+
+3. Soften the edges of watercolor paintings.  After the current passes, lower the threshold for water migrating to dry pixels, and allow diffusion for a small number of iterations.  Maybe set all velocities to zero first, in order to simulate drying over time.

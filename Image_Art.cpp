@@ -565,6 +565,11 @@ int main(int argc, char** argv)
 		if (64 == (file_output & 64))
 		{
 			std::cout << "progressive paint\n";
+#ifdef USE_CUDA
+			std::cout << "Progressive paint not currently supported for CUDA painting.\n";
+			throw std::runtime_error("Use of progressive paint on CUDA version.");
+			exit(1);
+#endif
 		}
 
 		if ("" != inpath)
@@ -855,7 +860,7 @@ int main(int argc, char** argv)
 				data_revised = workspace->GenerateImage(4, prop);
 				temppath = path;
 				temppath.append(OUTPUT).append("_prog_paint");
-				data_revised->write_file(temppath);
+				data_revised->write_file(temppath);  // *** Bug - can be called with data_revised == NULL.
 				std::cout << ".";
 				delete data_revised;
 			}
