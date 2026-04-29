@@ -1235,6 +1235,11 @@ bool SPixelData::FloodReplace(int p, int orig, int updated)
 	return true;
 }
 
+int* SPixelData::GetData()
+{
+	return data;
+}
+
 #ifdef USE_CUDA
 bool SPixelData::SyncToDevice()
 {

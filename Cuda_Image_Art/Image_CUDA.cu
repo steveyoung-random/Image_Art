@@ -473,7 +473,7 @@ __global__ void process_gen_grayscale_c_nc(unsigned char* c_device_data_input, i
 }
 
 
-unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* h_in, bool isdilate, int mode, int struct_size) {
+unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdilate, int mode, int struct_size) {
 	// CUDA function to dilate or erode an image with dimensions x and y.
 	// isdilate is true if this is dilation, false if this is erosion.
 	// mode is 0 if the structuring element is rectangular, and 1 if it is a disc.
@@ -481,13 +481,13 @@ unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* h_in, bool isdila
 	// The host version of the input data is h_in, the device version is d_in.
 	// The host version of the output data is h_out, the device version is d_out.
 
-	unsigned char* d_in = NULL;
+	//unsigned char* d_in = NULL;
 	unsigned char* d_out = NULL;
 	unsigned char* h_out = NULL; // The return value from this function.
 	int N = x * y;
 	cudaError_t cudaStatus;
 
-	d_in = UCharArray(x, y, false);
+	//d_in = UCharArray(x, y, false);
 	d_out = UCharArray(x, y, false);
 	h_out = (unsigned char*)malloc(sizeof(unsigned char) * N);
 	if (NULL == h_out)
@@ -495,14 +495,14 @@ unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* h_in, bool isdila
 		throw (std::runtime_error("Unable to allocate memory for image in c_gen_dilate_erode.\n"));
 		return NULL;
 	}
-	if (false == CopyFromHost(h_in, N, d_in))
-	{
-		throw (std::runtime_error("Failed to transfer memory to device in c_gen_dilate_erode.\n"));
-		FreeUCharArray(d_in);
-		FreeUCharArray(d_out);
-		free(h_out);
-		return NULL;
-	}
+	//if (false == CopyFromHost(h_in, N, d_in))
+	//{
+	//	throw (std::runtime_error("Failed to transfer memory to device in c_gen_dilate_erode.\n"));
+	//	//FreeUCharArray(d_in);
+	//	FreeUCharArray(d_out);
+	//	free(h_out);
+	//	return NULL;
+	//}
 
 	int struct_extents = (struct_size - 1) / 2; // This if the extent to which the structuring element extends beyond the origin in each direction.
 	struct_size = 1 + 2 * struct_extents; // Adjusting as needed if struct size is even.
@@ -534,12 +534,12 @@ unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* h_in, bool isdila
 	if (false == CopyToHost(d_out, N, h_out))
 	{
 		throw (std::runtime_error("Failed to transfer memory from device in c_gen_dilate_erode.\n"));
-		FreeUCharArray(d_in);
+		//FreeUCharArray(d_in);
 		FreeUCharArray(d_out);
 		free(h_out);
 		return NULL;
 	}
-	FreeUCharArray(d_in);
+	//FreeUCharArray(d_in);
 	FreeUCharArray(d_out);
 	return h_out;
 }

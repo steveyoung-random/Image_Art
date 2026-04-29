@@ -132,7 +132,7 @@ GradData* GradData::gen_dilate_erode(bool isdilate, int mode, int struct_size)
 
 #ifdef USE_CUDA
 
-		output = c_gen_dilate_erode(x, y, data, isdilate, mode, struct_size);
+		output = c_gen_dilate_erode(x, y, c_device_data, isdilate, mode, struct_size);
 		ret = new GradData(output, x, y);
 		if (NULL == ret)
 		{
@@ -607,3 +607,14 @@ GradData* GradData::Generate_Gradient(int mode, int struct_size, int xdiv, int y
 	return edge;
 }
 
+unsigned char* GradData::GetData()
+{
+	return data;
+}
+
+#ifdef USE_CUDA
+unsigned char* GradData::GetCData()
+{
+	return c_device_data;
+}
+#endif

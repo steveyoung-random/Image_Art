@@ -113,6 +113,7 @@ public:
 	bool SetColorBucket(int b);
 	bool SetFillImage(std::string fill);
 	bool SetSize(int s);
+	bool SetLevelComplete(int value);
 	bool SetIdentifierandBox(int id, RectQuad box);
 	bool SetNeighbors();
 	bool SetPathHead(Path* path);

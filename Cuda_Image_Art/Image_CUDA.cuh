@@ -12,5 +12,5 @@ __global__ void process_gen_grayscale(unsigned char* c_device_data_input, int N,
 __global__ void process_gen_grayscale_c(unsigned char* c_device_data_input, int N, int c, unsigned char* c_device_data_output);
 __global__ void process_gen_grayscale_c_nc(unsigned char* c_device_data_input, int N, int c, int nc, unsigned char* c_device_data_output);
 
-unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* input, bool isdilate, int mode, int struct_size);
+unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* c_input, bool isdilate, int mode, int struct_size);
 bool c_gen_gray(unsigned char* c_device_data_input, int x, int y, int channels, int c, int n, unsigned char* c_device_data_output);

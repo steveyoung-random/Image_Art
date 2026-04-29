@@ -133,3 +133,6 @@ public:
 	GradData* gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst);
 	bool Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize);
 };
+
+// For host-arrays.
+bool WriteOutHostIntArray(int* source, int x, int y, std::string name, int min, int max);

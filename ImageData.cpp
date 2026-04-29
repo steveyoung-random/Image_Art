@@ -247,7 +247,6 @@ bool ImageData::PaintCurve(std::vector<Corner> curve, SPixelData* mask, int mask
 #endif
 	return true;
 }
-
 unsigned char* ImageData::GetData()
 {
 	return data;

@@ -830,7 +830,7 @@ __global__ void process_bristle_dab(cudaBrush* brush, int num_bristles, FloatPoi
 					int img_y = (int)bristle_location.y + j;
 					adjustment = local_bristle_kernel[abs(i) + bristle_kernel_side * abs(j)];
 
-					float adjusted_flow = (flow_diff + flow) * adjustment;
+					float adjusted_flow = (flow_diff + flow) * adjustment; // *** This is not used.  Is it left over from pre-watercolor?  Look at Dab3 function.
 					if ((img_x >= 0) && (img_x < width) && (img_y >= 0) && (img_y < height))
 					{
 						int img_idx = img_x + img_y * width;

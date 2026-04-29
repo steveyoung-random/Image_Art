@@ -24,7 +24,6 @@ __global__ void initialize_Int_Array(int* array, int value, int N);
 __global__ void initialize_UChar_Array(unsigned char* array, unsigned char value, int N);
 __global__ void renormalize_Float_Array(float* array, int N, float min_value, float max_value);
 __global__ void initialize_Bool_Array(bool* array, bool value, int N);
-__global__ void test_Bool_Array(bool* array, int w, int h, int wx, int wy, bool* result);
 __global__ void process_Copy_Unsigned_Char_Array(unsigned char* source, int N, unsigned char* target);
 __global__ void process_Copy_Int_Array(int* source, int N, int* target);
 __global__ void process_add_partial_Float_Array(float* source, int source_width, int source_height, float* target, int target_width, int target_height, int target_x_offset, int target_y_offset);
@@ -33,7 +32,9 @@ __global__ void process_copy_Float_Array_portion(float* source, int source_image
 __global__ void process_add_Float_Array_portion(float* source, int source_image_width, int source_image_height, int source_x_offset, int source_y_offset, int portion_width, int portion_height, float* target, int target_width, int target_height, int target_x_offset, int target_y_offset);
 __global__ void initialize_gauss_kernel(float* matrix, int g_radius, float thin_factor);
 __global__ void set_single_value(float* matrix, int w, int h, int x, int y, float value, bool sum);
-
+__global__ void test_int_row(int* matrix, int w, int h, int row, int value, bool* result);
+__global__ void test_int_column(int* matrix, int w, int h, int column, int value, bool* result);
+__global__ void test_Bool_Array(bool* array, int w, int h, bool* result);
 
 
 class SparseFloatMatrix
@@ -64,7 +65,6 @@ public:
 	int GetWidth();
 	int GetHeight();
 	float* GetChunk(int chunk_index);
-	bool TestMask(bool* M, int chunk_index);
 	float GetBackround();
 	bool* GetDChunkUpdates();
 	bool* GetHChunkUpdates();
@@ -102,6 +102,7 @@ bool FreeBoolArray(bool* a);
 bool ResetBoolArray(bool* matrix, int x, int y, bool value);
 bool CopyFromHost(bool* source, int N, bool* dest);
 bool CopyToHost(bool* source, int N, bool* dest);
+bool WriteOutBoolArray(bool* source, int x, int y, std::string name);
 
 // Matrix operations for integer arrays.
 int* IntArray(int x, int y, bool initialize_value, int value = 0);
@@ -110,6 +111,7 @@ bool ResetIntArray(int* a, int w, int h, int value = 0);
 bool CopyFromHost(int* source, int N, int* dest);
 bool CopyToHost(int* source, int N, int* dest);
 bool OnDeviceCopy(int* source, int N, int* dest);
+bool WriteOutIntArray(int* source, int x, int y, std::string name, int min, int max);
 
 // Matrix operations for unsigned char arrays.
 unsigned char* UCharArray(int x, int y, bool initialize_value, unsigned char value = 0);
@@ -118,3 +120,9 @@ bool ResetUCharArray(unsigned char* a, int w, int h, unsigned char value = 0);
 bool CopyFromHost(unsigned char* source, int N, unsigned char* dest);
 bool CopyToHost(unsigned char* source, int N, unsigned char* dest);
 bool OnDeviceCopy(unsigned char* source, int N, unsigned char* dest);
+bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name);
+
+// Test for return values.
+bool TestResult(int w, int h, bool* ResultsArray, bool* c_result);
+bool TestIntRow(int w, int h, int* matrix, int row, int value, bool* result);
+bool TestIntColumn(int w, int h, int* matrix, int column, int value, bool* result);

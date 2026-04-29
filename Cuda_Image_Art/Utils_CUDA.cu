@@ -68,22 +68,31 @@ __global__ void initialize_Bool_Array(bool* array, bool value, int N)
 	}
 }
 
-__global__ void test_Bool_Array(bool* array, int w, int h, int wx, int wy, bool* result)
+__global__ void test_Bool_Array(bool* array, int w, int h, bool* result)
 {
+	// Assumes that the value pointed to by result is false to start.  It is set to true if any element of the bool array is true.
+
+	__shared__ bool block_true;
+	if (threadIdx.x == 0)
+	{
+		block_true = false;
+	}
+	__syncthreads();
+
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int N = chunk_size * chunk_size;
+	int N = w * h;
 	if (idx < N)
 	{
-		int y = wy + idx % chunk_size;
-		int x = wx + idx / chunk_size;
-		if ((x < w) && (y < h))
+		if (array[idx])
 		{
-			int pos = x + w * y;
-			if (array[pos])
-			{
-				*result = true;
-			}
+			block_true = true;
 		}
+	}
+	__syncthreads();
+
+	if ((threadIdx.x == 0) && block_true)
+	{
+		*result = true;
 	}
 }
 
@@ -111,7 +120,6 @@ __global__ void process_add_partial_Float_Array(float* source, int source_width,
 	int src_N = source_width * source_height;
 	if (idx < src_N)
 	{
-		int dst_N = target_width * target_height;
 		int src_y = idx / source_width;
 		int src_x = idx % source_width;
 		int dst_x = target_x_offset + src_x;
@@ -130,7 +138,6 @@ __global__ void process_copy_partial_Float_Array(float* source, int source_width
 	int src_N = source_width * source_height;
 	if (idx < src_N)
 	{
-		int dst_N = target_width * target_height;
 		int src_y = idx / source_width;
 		int src_x = idx % source_width;
 		int dst_x = target_x_offset + src_x;
@@ -207,6 +214,40 @@ __global__ void set_single_value(float* matrix, int w, int h, int x, int y, floa
 		}
 		else {
 			matrix[idx] = value;
+		}
+	}
+}
+
+__global__ void test_int_row(int* matrix, int w, int h, int row, int value, bool* result)
+{
+	// Kernel to test whether value shows up in the indicated row of matrix, where the dimensions of matrix
+	// are given by w and h.  The value for result is updated if true.
+
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if ((false == *result) && (idx < w) && (row < h))
+	{
+		int pos = idx + row * w;
+		int pix_val = matrix[pos];
+		if (value == pix_val)
+		{
+			*result = true;
+		}
+	}
+}
+
+__global__ void test_int_column(int* matrix, int w, int h, int column, int value, bool* result)
+{
+	// Kernel to test whether value shows up in the indicated column of matrix, where the dimensions of matrix
+	// are given by w and h.  The value for result is updated if true.
+
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if ((false == *result) && (idx < w) && (column < w))
+	{
+		int pos = column + idx * w;
+		int pix_val = matrix[pos];
+		if (value == pix_val)
+		{
+			*result = true;
 		}
 	}
 }
@@ -909,6 +950,185 @@ bool WriteOutSparseFloatMatrix(SparseFloatMatrix* source, int x, int y, std::str
 	return ret;
 }
 
+bool WriteOutBoolArray(bool* source, int x, int y, std::string name)
+{
+	bool ret = true;
+	cudaError_t cudaStatus;
+	unsigned char* data;
+	bool* h_source;
+	data = (unsigned char*)malloc(sizeof(unsigned char) * x * y * 3);
+	if (NULL == data)
+	{
+		throw std::runtime_error("Failed to allocate data for image.\n");
+		ret = false;
+	}
+	if (ret)
+	{
+		h_source = (bool*)malloc(sizeof(bool) * x * y);
+		if (NULL == h_source)
+		{
+			throw std::runtime_error("Failed to allocate host data for WriteOutBoolArray.\n");
+			ret = false;
+		}
+	}
+	if (ret)
+	{
+		cudaStatus = cudaMemcpy(h_source, source, x * y * sizeof(bool), cudaMemcpyDeviceToHost);
+		if (cudaStatus != cudaSuccess)
+		{
+			ret = false;
+			std::cout << "Error copying memory from device to host in WriteOutBoolArray.\n";
+		}
+		long pos = 0;
+		for (int j = 0; j < y; ++j)
+		{
+			for (int i = 0; i < x; ++i)
+			{
+				long image_pos = 3 * (j * x + i);
+				unsigned char value;
+				if (h_source[pos])
+				{
+					value = 255;
+				}
+				else
+				{
+					value = 0;
+				}
+				data[image_pos] = value;
+				data[image_pos + 1] = value;
+				data[image_pos + 2] = value;
+				pos++;
+			}
+		}
+		if (0 == stbi_write_png(name.c_str(), x, y, 3, data, x * 3))
+		{
+			throw std::runtime_error("Unable to write out matrix image in WriteOutBoolArray.\n");
+			ret = false;
+		}
+		free(data);
+		free(h_source);
+	}
+	return ret;
+}
+
+bool WriteOutIntArray(int* source, int x, int y, std::string name, int min, int max)
+{
+	bool ret = true;
+	cudaError_t cudaStatus;
+	unsigned char* data;
+	int* h_source;
+	int delta = std::abs(max - min);
+	data = (unsigned char*)malloc(sizeof(unsigned char) * x * y * 3);
+	if (NULL == data)
+	{
+		throw std::runtime_error("Failed to allocate data for image.\n");
+		ret = false;
+	}
+	if (ret)
+	{
+		h_source = (int*)malloc(sizeof(int) * x * y);
+		if (NULL == h_source)
+		{
+			throw std::runtime_error("Failed to allocate host data for WriteOutIntArray.\n");
+			ret = false;
+		}
+	}
+	if (ret)
+	{
+		cudaStatus = cudaMemcpy(h_source, source, x * y * sizeof(int), cudaMemcpyDeviceToHost);
+		if (cudaStatus != cudaSuccess)
+		{
+			ret = false;
+			std::cout << "Error copying memory from device to host in WriteOutIntArray.\n";
+		}
+		long pos = 0;
+		for (int j = 0; j < y; ++j)
+		{
+			for (int i = 0; i < x; ++i)
+			{
+				long image_pos = 3 * (j * x + i);
+				unsigned char value;
+				if (h_source[pos] > max)
+				{
+					value = 255;
+				}
+				else if (h_source[pos] < min)
+				{
+					value = 0;
+				}
+				else {
+					value = (255 * (h_source[pos] - min)) / delta;
+				}
+				data[image_pos] = value;
+				data[image_pos + 1] = value;
+				data[image_pos + 2] = value;
+				pos++;
+			}
+		}
+		if (0 == stbi_write_png(name.c_str(), x, y, 3, data, x * 3))
+		{
+			throw std::runtime_error("Unable to write out matrix image in WriteOutIntArray.\n");
+			ret = false;
+		}
+		free(data);
+		free(h_source);
+	}
+	return ret;
+}
+
+bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name)
+{
+	bool ret = true;
+	cudaError_t cudaStatus;
+	unsigned char* data;
+	unsigned char* h_source;
+
+	data = (unsigned char*)malloc(sizeof(unsigned char) * x * y * 3);
+	if (NULL == data)
+	{
+		throw std::runtime_error("Failed to allocate data for image.\n");
+		ret = false;
+	}
+	if (ret)
+	{
+		h_source = (unsigned char*)malloc(sizeof(unsigned char) * x * y);
+		if (NULL == h_source)
+		{
+			throw std::runtime_error("Failed to allocate host data for WriteOutUCharArray.\n");
+			ret = false;
+		}
+	}
+	if (ret)
+	{
+		cudaStatus = cudaMemcpy(h_source, source, x * y * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+		if (cudaStatus != cudaSuccess)
+		{
+			ret = false;
+			std::cout << "Error copying memory from device to host in WriteOutUCharArray.\n";
+		}
+		long pos = 0;
+		for (int j = 0; j < y; ++j)
+		{
+			for (int i = 0; i < x; ++i)
+			{
+				long image_pos = 3 * (j * x + i);
+				data[image_pos] = h_source[pos];
+				data[image_pos + 1] = h_source[pos];
+				data[image_pos + 2] = h_source[pos];
+				pos++;
+			}
+		}
+		if (0 == stbi_write_png(name.c_str(), x, y, 3, data, x * 3))
+		{
+			throw std::runtime_error("Unable to write out matrix image in WriteOutUCharArray.\n");
+			ret = false;
+		}
+		free(data);
+		free(h_source);
+	}
+	return ret;
+}
+
 SparseFloatMatrix::SparseFloatMatrix(int width, int height, float value)
 {
 	w = width;
@@ -1148,34 +1368,6 @@ float* SparseFloatMatrix::GetChunk(int chunk_index)
 	return chunk[chunk_index];
 }
 
-bool SparseFloatMatrix::TestMask(bool* M, int chunk_index)
-{
-	// Return true if any element of M is true within the identified chunk.
-	cudaError_t cudaStatus;
-	int blocksPerGrid = (chunk_size * chunk_size + threads_per_block - 1) / threads_per_block;
-	bool ret = false;
-	cudaStatus = cudaMemcpy(b_result, &ret, sizeof(bool), cudaMemcpyHostToDevice);
-	if (cudaStatus != cudaSuccess)
-	{
-		ret = false;
-		std::cout << "Error copying memory from host to device in SparseFloatMatrix::TestMask.\n";
-	}
-	int wy = chunk_index / x_chunks;  // Y component of beginning of window represented by chunk.
-	int wx = chunk_index % x_chunks; // X component of the beginning of windows represented by chunk. 
-	wx = wx * chunk_size;
-	wy = wy * chunk_size;
-
-	test_Bool_Array << <blocksPerGrid, threads_per_block >> > (M, w, h, wx, wy, &ret);  // *** Shouldn't the passed in variable be b_result? ***
-
-	cudaStatus = cudaMemcpy(&ret, b_result, sizeof(bool), cudaMemcpyDeviceToHost);
-	if (cudaStatus != cudaSuccess)
-	{
-		ret = false;
-		std::cout << "Error copying memory from host to device in SparseFloatMatrix::TestMask.\n";
-	}
-	return ret;
-}
-
 float SparseFloatMatrix::GetBackround()
 {
 	return background_value;
@@ -1221,7 +1413,6 @@ bool SparseFloatMatrix::UpdateChunks()
 bool SparseFloatMatrix::ExpandToFloatArray(float* d_dst)
 {
 	bool ret = true;
-	int N = w * h;
 	// First, set array to background values.
 	ret = ResetFloatArray(d_dst, w, h, background_value);
 	if (!ret)
@@ -1282,5 +1473,78 @@ bool SparseFloatMatrix::SyncChunks(SparseFloatMatrix* src)
 			chunk_set.insert(chunk_num);
 		}
 	}
+	return ret;
+}
+
+bool TestResult(int w, int h, bool* ResultsArray, bool* c_result)
+{
+	// Return true if any element of ResultsArray on the CUDA device is true.
+	// w and h define the dimensions of the array.
+	// c_result is a single boolean value that has already been allocated on the CUDA device (used as temp storage).
+
+	cudaError_t cudaStatus;
+	int blocksPerGrid = (w * h + threads_per_block - 1) / threads_per_block;
+	bool ret = false;
+	ResetBoolArray(c_result, 1, 1, false);
+	test_Bool_Array << <blocksPerGrid, threads_per_block >> > (ResultsArray, w, h, c_result);
+	cudaDeviceSynchronize();
+	cudaStatus = cudaMemcpy(&ret, c_result, sizeof(bool), cudaMemcpyDeviceToHost);
+	if (cudaStatus != cudaSuccess)
+	{
+		ret = false;
+		std::cout << "Error copying memory from host to device in TestResult.\n";
+	}
+	return ret;
+}
+
+bool TestIntRow(int w, int h, int* matrix, int row, int value, bool* result)
+{
+	// Return true if the value shows up in the indicated row.
+	// result is a single bool value on the CUDA device, which needs to be allocated before calling this function.
+	cudaError_t cudaStatus;
+	int blocksPerGrid = (w + threads_per_block - 1) / threads_per_block;
+	bool ret = ResetBoolArray(result, 1, 1, false);
+	if (false == ret)
+	{
+		throw std::runtime_error("Failed to reset result value on CUDA device in TestIntRow.\n");
+		return ret;
+	}
+	ret = false;
+	CopyFromHost(&ret, 1, result);
+	test_int_row << <blocksPerGrid, threads_per_block >> > (matrix, w, h, row, value, result);
+	cudaDeviceSynchronize();
+	cudaStatus = cudaGetLastError();
+	if (cudaStatus != cudaSuccess)
+	{
+		throw std::runtime_error("Failed in test_int_row.\n");
+		return false;
+	}
+	CopyToHost(result, 1, &ret);
+	return ret;
+}
+
+bool TestIntColumn(int w, int h, int* matrix, int Column, int value, bool* result)
+{
+	// Return true if the value shows up in the indicated column.
+	// result is a single bool value on the CUDA device, which needs to be allocated before calling this function.
+	cudaError_t cudaStatus;
+	int blocksPerGrid = (h + threads_per_block - 1) / threads_per_block;
+	bool ret = ResetBoolArray(result, 1, 1, false);
+	if (false == ret)
+	{
+		throw std::runtime_error("Failed to reset result value on CUDA device in TestIntColumn.\n");
+		return ret;
+	}
+	ret = false;
+	CopyFromHost(&ret, 1, result);
+	test_int_column << <blocksPerGrid, threads_per_block >> > (matrix, w, h, Column, value, result);
+	cudaDeviceSynchronize();
+	cudaStatus = cudaGetLastError();
+	if (cudaStatus != cudaSuccess)
+	{
+		throw std::runtime_error("Failed in test_int_column.\n");
+		return false;
+	}
+	CopyToHost(result, 1, &ret);
 	return ret;
 }

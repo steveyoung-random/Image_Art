@@ -149,9 +149,9 @@ int SuperPixel::Grow(unsigned char value, bool limit, bool mode, RectQuad box, S
 // Return 0 if there is no more growing to be done at this value.
 // Return the identifier associated with another SuperPixel if it is encountered.
 // Return -1 on error.
-// Mode is: ordinary growing = true, return when encountering another SuperPixel = false
-// Limit is: limited to bounding box (if mask is NULL).  If mask is not NULL, use it (with mask_value).
-// Diagonals is: can the set grow to diagonal pixels in addition to vertically and horizontally.
+// mode is: ordinary growing = true, return when encountering another SuperPixel = false
+// limit is: limited to bounding box (if mask is NULL).  If mask is not NULL, use it (with mask_value).
+// diagonals is: can the set grow to diagonal pixels in addition to vertically and horizontally.
 //
 // Modified from original in that it does not grow diagonally.
 {
@@ -197,7 +197,7 @@ int SuperPixel::Grow(unsigned char value, bool limit, bool mode, RectQuad box, S
 			PointPair xy = Pos2XY(pos);
 			int i = xy.x;
 			int j = xy.y;
-			bool surrounded = true;
+			bool surrounded = true;  // Indicates whether the pixel at i,j is surrounded by pixels with non-zero superpixel identifiers.  No growth is possible in that case.
 			for (int l = j - 1; l <= j + 1; l++)
 			{
 				for (int k = i - 1; k <= i + 1; k++)
@@ -2123,6 +2123,12 @@ bool SuperPixel::SetFillImage(std::string fill)
 bool SuperPixel::SetSize(int s)
 {
 	size = s;
+	return true;
+}
+
+bool SuperPixel::SetLevelComplete(int value)
+{
+	level_complete = value;
 	return true;
 }
 

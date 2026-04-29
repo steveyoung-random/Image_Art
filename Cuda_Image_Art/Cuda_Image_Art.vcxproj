@@ -28,6 +28,7 @@
     <ClInclude Include="Brush_CUDA.cuh" />
     <ClInclude Include="Image_CUDA.cuh" />
     <ClInclude Include="Utils_CUDA.cuh" />
+    <ClInclude Include="Watershed_CUDA.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Brush.cpp" />
@@ -47,10 +48,12 @@
     <CudaCompile Include="Brush_CUDA.cu" />
     <CudaCompile Include="Image_CUDA.cu" />
     <CudaCompile Include="Utils_CUDA.cu" />
+    <CudaCompile Include="Watershed_CUDA.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{248E02A9-A6F1-493E-A746-8081A595FB3B}</ProjectGuid>
     <RootNamespace>Cuda_Image_Art</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -85,6 +88,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>USE_CUDA;WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -102,6 +106,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;USE_CUDA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

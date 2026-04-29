@@ -7,7 +7,7 @@
 #include <set>
 #include <thread>
 #include <algorithm>
-#include <execution>
+//#include <execution>
 #include <immintrin.h>
 #include <cmath>
 #include "stb_image_write.h"

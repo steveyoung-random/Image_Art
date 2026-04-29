@@ -10,6 +10,9 @@
 class SuperPixel;
 
 class SPixelData {
+	// This class hold the data the maps each pixel in the image to a superpixel.  The value at the pixel location is the identifier for the superpixel.
+	// It also includes helper functions that operate on the superpixel data.
+
 private:
 	int* data = NULL;
 	int width, height;
@@ -39,6 +42,7 @@ public:
 	float RadiusTransverse(FloatPointPair p, FloatPointPair c, int mask_value);
 	FloatPointPair AxialExtent(FloatPointPair p, FloatPointPair c, int mask_value);
 	bool FloodReplace(int p, int orig, int updated);
+	int* GetData();
 #ifdef USE_CUDA
 	bool SyncToDevice();
 	int* GetDeviceData();

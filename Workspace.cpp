@@ -7,6 +7,9 @@
 #include "stb_image_write.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#ifdef USE_CUDA
+#include "Cuda_Image_Art\Watershed_CUDA.cuh"
+#endif
 
 GradData* WorkSpace::gen_diff(ImageData* image1, ImageData* image2)
 {
@@ -515,6 +518,7 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 
 bool WorkSpace::Watershed()
 {
+	bool ret = false;
 	pixeldata->Reset();
 	current = list_head;
 	while (NULL != current)
@@ -524,10 +528,21 @@ bool WorkSpace::Watershed()
 	}
 	std::cout << "\n256 Levels: ";
 	// Implement actual waterpixel algorithm.
+#ifdef USE_CUDA
+	 
+	ret = c_watershed_grow(width, height, list_head);
+	if (false == ret)
+	{
+		throw std::runtime_error("Failed on watershed growth.\n");
+	}
+	return ret;
+#endif
+
 	for (int level = 0; level < 256; level++)
 	{
 		bool done = false;
 		std::cout << ".";
+		//int count = 0;
 		while (false == done)
 		{
 			done = true;
@@ -2274,4 +2289,53 @@ std::string ColorPalette::TranslateColorToString(Color c)
 	}
 	sstream << std::hex << (int)local_color.channel[2];
 	return sstream.str();
+}
+
+
+bool WriteOutHostIntArray(int* source, int x, int y, std::string name, int min, int max)
+{
+	bool ret = true;
+	unsigned char* data;
+	int delta = std::abs(max - min);
+	data = (unsigned char*)malloc(sizeof(unsigned char) * x * y * 3);
+	if (NULL == data)
+	{
+		throw std::runtime_error("Failed to allocate data for image.\n");
+		ret = false;
+	}
+
+	if (ret)
+	{
+		long pos = 0;
+		for (int j = 0; j < y; ++j)
+		{
+			for (int i = 0; i < x; ++i)
+			{
+				long image_pos = 3 * (j * x + i);
+				unsigned char value;
+				if (source[pos] > max)
+				{
+					value = 255;
+				}
+				else if (source[pos] < min)
+				{
+					value = 0;
+				}
+				else {
+					value = (255 * (source[pos] - min)) / delta;
+				}
+				data[image_pos] = value;
+				data[image_pos + 1] = value;
+				data[image_pos + 2] = value;
+				pos++;
+			}
+		}
+		if (0 == stbi_write_png(name.c_str(), x, y, 3, data, x * 3))
+		{
+			throw std::runtime_error("Unable to write out matrix image in WriteOutIntArray.\n");
+			ret = false;
+		}
+		free(data);
+	}
+	return ret;
 }

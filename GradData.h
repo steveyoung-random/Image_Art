@@ -37,5 +37,9 @@ public:
 	ImageData* Gradient2Image(int mode);
 	GradData* Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize);
 	GradData* Generate_Gradient(int mode = 0, int struct_size = 3, int xd = 100, int yd = 100, float konst = 0);
+	unsigned char* GetData(); // Return data, the non-CUDA data for this object.
+#ifdef USE_CUDA
+	unsigned char* GetCData(); // Return the CUDA device version of the data for this object.
+#endif
 };
 
