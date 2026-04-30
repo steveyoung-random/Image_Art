@@ -71,14 +71,13 @@ private:
 	SPixelData* processed_pixeldata = NULL;
 	SuperPixel* current = NULL;
 	RectQuad bbox;
-	bool diagonals;
 	std::set<SuperPixelIndex> superpixel_set;
 	ColorPalette* palette = NULL;
 
 public:
 
-	WorkSpace(std::string filename, int channel = 0, int nchannel = 0, bool diagonals = false);
-	WorkSpace(std::string sp_filename, bool diagonals = false);
+	WorkSpace(std::string filename, int channel, int nchannel);
+	WorkSpace(std::string sp_filename);
 	WorkSpace(const WorkSpace& t);
 	~WorkSpace();
 	bool Reset();

@@ -144,14 +144,13 @@ SuperPixel::~SuperPixel()
 	}
 }
 
-int SuperPixel::Grow(unsigned char value, bool limit, bool mode, RectQuad box, SPixelData* mask, int mask_value, bool diagonals)
+int SuperPixel::Grow(unsigned char value, bool limit, bool mode, RectQuad box, SPixelData* mask, int mask_value)
 // Return identifier if there is more growing to be done at this value.
 // Return 0 if there is no more growing to be done at this value.
 // Return the identifier associated with another SuperPixel if it is encountered.
 // Return -1 on error.
 // mode is: ordinary growing = true, return when encountering another SuperPixel = false
 // limit is: limited to bounding box (if mask is NULL).  If mask is not NULL, use it (with mask_value).
-// diagonals is: can the set grow to diagonal pixels in addition to vertically and horizontally.
 //
 // Modified from original in that it does not grow diagonally.
 {
@@ -202,7 +201,7 @@ int SuperPixel::Grow(unsigned char value, bool limit, bool mode, RectQuad box, S
 			{
 				for (int k = i - 1; k <= i + 1; k++)
 				{
-					if ((l >= box.y0) && (k >= box.x0) && (l <= box.y1) && (k <= box.x1) && ((l != j) || (k != i)) && (diagonals || (l == j) || (k == i)))
+					if ((l >= box.y0) && (k >= box.x0) && (l <= box.y1) && (k <= box.x1) && ((l != j) || (k != i)) && ((l == j) || (k == i)))
 					{
 						if ((false == use_mask) || (mask_value == mask->GetPixel(k, l)))
 						{
@@ -1175,7 +1174,7 @@ float SuperPixel::ColorDifference(Color c1, Color c2)
 	return distance;
 }
 
-PointPair SuperPixel::Split(ImageData* image, bool diagonals)
+PointPair SuperPixel::Split(ImageData* image)
 {
 	PointPair ret;
 	ret.x = 0;
@@ -1236,7 +1235,7 @@ PointPair SuperPixel::Split(ImageData* image, bool diagonals)
 			int cx = boundingbox.x0 + i * dx + (dx / 2);
 			int cy = boundingbox.y0 + j * dy + (dy / 2);
 			cell = new Cell(gradientdata, seedpixeldata, cx, cy, (int)dx, (int)dy, 2);
-			if (cell->FindSeed(pixeldata, identifier, diagonals)) // Use the existing identifier values in pixeldata as the active mask.
+			if (cell->FindSeed(pixeldata, identifier)) // Use the existing identifier values in pixeldata as the active mask.
 			{
 				count++;
 				PointPair prop_seed = cell->GetSeed();
@@ -1260,12 +1259,12 @@ PointPair SuperPixel::Split(ImageData* image, bool diagonals)
 			while (false == done)
 			{
 				done = true;
-				int grow_ret = head->Grow(level, true, true, boundingbox, pixeldata, identifier, diagonals);
+				int grow_ret = head->Grow(level, true, true, boundingbox, pixeldata, identifier);
 				if (grow_ret > 0)
 				{
 					done = false;
 				}
-				grow_ret = current->Grow(level, true, true, boundingbox, pixeldata, identifier, diagonals);
+				grow_ret = current->Grow(level, true, true, boundingbox, pixeldata, identifier);
 				if (grow_ret > 0)
 				{
 					done = false;

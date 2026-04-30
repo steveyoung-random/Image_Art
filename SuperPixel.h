@@ -105,7 +105,7 @@ public:
 	WorkSpace* GetWorkspace();
 
 
-	int Grow(unsigned char value, bool limit, bool mode, RectQuad box, SPixelData* mask, int mask_value, bool diagonals = true);
+	int Grow(unsigned char value, bool limit, bool mode, RectQuad box, SPixelData* mask, int mask_value);
 	bool Reset();
 
 	Color SetAveColor(ImageData* image);
@@ -124,7 +124,7 @@ public:
 	bool SetWindow(RectQuad w);
 	bool SetWorkspace(WorkSpace* ws);
 
-	PointPair Split(ImageData* image, bool diagonals = false);
+	PointPair Split(ImageData* image);
 	bool SeparateDiscontinuousSuperPixel();
 	SuperPixel* Thin(GradData* graddat, SPixelData* pixdat, SuperPixel* prev, bool only_one, bool glitch3 = false);
 	bool Thin_Subiteration(int n, bool global_changed);

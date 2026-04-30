@@ -19,7 +19,6 @@
 #define POST_DILATE_SHAPE 1
 #define CHANNEL 0
 #define NCHANNEL 0
-#define DIAGONALS 0
 #define GRADTHICKNESS 3
 #define PATH "D:\\temp\\"
 #define OUTPUT "output"
@@ -53,7 +52,6 @@ int main(int argc, char** argv)
 	int nchannel = NCHANNEL;
 	int postproc_windowsize = POSTWINDOW;
 	int postgap = POSTGAP;
-	bool diagonals = DIAGONALS;
 	int gradthickness = GRADTHICKNESS;
 	bool fine = FINE;
 	bool polygon = POLYGON;
@@ -159,16 +157,6 @@ int main(int argc, char** argv)
 			else if (tag == "contrast")
 			{
 				contrast_radius = atoi(value.c_str());
-			}
-			else if ((tag == "d") || (tag == "diagonals") || (tag == "diagonal"))
-			{
-				if (atoi(value.c_str()) > 0)
-				{
-					diagonals = true;
-				}
-				else {
-					diagonals = false;
-				}
 			}
 			else if ((tag == "dilate") || (tag == "predilate") || (tag == "pre_dilate") || (tag == "pre-dilate"))
 			{
@@ -489,7 +477,6 @@ int main(int argc, char** argv)
 		std::cout << "Postprocessing erode mode: " << post_erode_shape << ", postprocessing dilation mode: " << post_dilate_shape << "\n";
 		std::cout << "Box factor: " << k << "\n";
 		std::cout << "Colormatch: " << colorsimilarity << "\n";
-		std::cout << "Diagonals: " << diagonals << " Outlines: " << prop.outline << "\n";
 		std::cout << "Path: " << path << " Inpath: " << inpath << "\n";
 		std::cout << "Fine points for SVG: " << fine << " Polygons for SVG: " << polygon << "\n";
 		std::cout << "Use contrast: " << contrast_radius << "\n";
@@ -761,7 +748,7 @@ int main(int argc, char** argv)
 		else if ("" != spfile)
 		{
 			std::cout << "Reading SuperPixel input from file.\n";
-			workspace = new WorkSpace(spfile, diagonals);
+			workspace = new WorkSpace(spfile);
 			if (NULL == workspace)
 			{
 				throw std::runtime_error("Failed to create Workspace.\n");
@@ -888,7 +875,7 @@ int main(int argc, char** argv)
 		else {
 			std::cout << "Starting from original image.";
 			std::cout << "\nGenerating grayscale and gradient\n";
-			workspace = new WorkSpace(filename, channel, nchannel, diagonals);
+			workspace = new WorkSpace(filename, channel, nchannel);
 			if (NULL == workspace)
 			{
 				throw std::runtime_error("Failed to create Workspace.\n");

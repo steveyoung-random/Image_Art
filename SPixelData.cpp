@@ -1193,7 +1193,6 @@ FloatPointPair SPixelData::AxialExtent(FloatPointPair p, FloatPointPair c, int m
 bool SPixelData::FloodReplace(int p, int orig, int updated)
 {
 	// Flood fill replace.  Starting at point p, replace all contiguous points that are value orig with the new value updated.
-	// diagonals indicates whether to flood fill on diagonals as well as adjacent pixels.
 
 	int pos = p;
 	if (orig != data[pos])

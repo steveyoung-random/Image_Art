@@ -24,7 +24,7 @@ public:
 
 	Cell(GradData* graddat, SPixelData* pixdat, int cx, int cy, int w, int h, int buf);
 	~Cell();
-	bool FindSeed(SPixelData* mask=NULL, int mask_value=0, bool diagonals=false);
+	bool FindSeed(SPixelData* mask=NULL, int mask_value=0);
 	PointPair GetSeed();
 
 };

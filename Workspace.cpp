@@ -80,7 +80,7 @@ bool WorkSpace::SetYdiv(int yd)
 
 
 
-WorkSpace::WorkSpace(std::string filename, int channel, int nchannel, bool d)
+WorkSpace::WorkSpace(std::string filename, int channel, int nchannel)
 {
 	data = stbi_load(filename.c_str(), &width, &height, &colorchannels, 0);
 	if (NULL != data)
@@ -102,11 +102,10 @@ WorkSpace::WorkSpace(std::string filename, int channel, int nchannel, bool d)
 	}
 	gray = image->gen_gray(channel, nchannel);
 	pixeldata = new SPixelData(width, height);
-	diagonals = d;
 	superpixel_set.clear();
 }
 
-WorkSpace::WorkSpace(std::string sp_filename, bool d)
+WorkSpace::WorkSpace(std::string sp_filename)
 {
 	// For reading in superpixel data from a file.
 	data = NULL;
@@ -114,7 +113,6 @@ WorkSpace::WorkSpace(std::string sp_filename, bool d)
 	gray = NULL;
 	edge = NULL;
 
-	diagonals = d;
 	list_head = NULL;
 	list_tail = NULL;
 
@@ -261,7 +259,6 @@ WorkSpace::WorkSpace(const WorkSpace& t)  // Copy constructor.  Same size as ori
 	processed_pixeldata = NULL;
 	current = NULL;
 	bbox = t.bbox;
-	diagonals = t.diagonals;
 	palette = NULL;
 	if (NULL != t.list_head)
 	{
@@ -491,7 +488,7 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 			{
 				count++;
 				cell = new Cell(edge, pixeldata, i, j, xdiv, ydiv, 2);
-				if (cell->FindSeed(NULL, 0, diagonals))
+				if (cell->FindSeed(NULL, 0))
 				{
 					PointPair seed = cell->GetSeed();
 					std::cout << ".";
@@ -549,7 +546,7 @@ bool WorkSpace::Watershed()
 			current = list_head;
 			while (NULL != current)
 			{
-				int grow_ret = current->Grow(level, false, true, bbox, NULL, 0, diagonals);
+				int grow_ret = current->Grow(level, false, true, bbox, NULL, 0);
 				if (grow_ret > 0)
 				{
 					done = false;
@@ -1121,7 +1118,7 @@ bool WorkSpace::SplitSuperPixels(float num_sigmas)
 	{
 		if (current->GetAveError() > limit)
 		{
-			PointPair Add_Seed = current->Split(image, diagonals);
+			PointPair Add_Seed = current->Split(image);
 			//std::cout << current->GetIdentifier() << ", " << Add_Seed.x << ", " << Add_Seed.y << "\n";
 			std::cout << ".";
 			if ((Add_Seed.x != 0) || (Add_Seed.y != 0))

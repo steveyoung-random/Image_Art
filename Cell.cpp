@@ -52,7 +52,7 @@ Cell::~Cell()
 
 }
 
-bool Cell::FindSeed(SPixelData* mask, int mask_value, bool diagonals)
+bool Cell::FindSeed(SPixelData* mask, int mask_value)
 {
 	bool ignore_mask;
 	unsigned char min = 255;
@@ -96,7 +96,7 @@ bool Cell::FindSeed(SPixelData* mask, int mask_value, bool diagonals)
 					else {
 						tail = new SuperPixel(count, gradientdata, pixeldata, ij, NULL, tail);
 					}
-					while (count == tail->Grow(min, true, true, box, mask, mask_value, diagonals));
+					while (count == tail->Grow(min, true, true, box, mask, mask_value));
 				}
 			}
 		}
@@ -118,10 +118,10 @@ bool Cell::FindSeed(SPixelData* mask, int mask_value, bool diagonals)
 		while (NULL != current)
 		{
 			bool cont_flag = false;
-			int grow_ret = current->Grow(min, true, false, box, mask, mask_value, diagonals);
+			int grow_ret = current->Grow(min, true, false, box, mask, mask_value);
 			while (grow_ret == current->GetIdentifier())
 			{
-				grow_ret = current->Grow(min, true, false, box, mask, mask_value, diagonals);
+				grow_ret = current->Grow(min, true, false, box, mask, mask_value);
 			}
 			if (grow_ret > 0) // Two SuperPixels have touched at min.  Need to compare sizes at previous step.
 			{
