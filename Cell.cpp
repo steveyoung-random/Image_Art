@@ -5,6 +5,15 @@
 
 Cell::Cell(GradData* graddat, SPixelData* pixdat, int cx, int cy, int w, int h, int buf)
 {
+	// Sets up a cell within the input image defined by graddat, which is used
+	// for determining the seed values for the watershed algorithm.
+	// pixdat is the SPixelData object that is used for assigning a superpixel to
+	// each pixel location in the image.
+	// cx and cy are the center locations of the cell in the image.
+	// w and h are the width and height of the cell.
+	// buf is a number of pixels of buffer at the edge of the cell, where
+	// seeds are not allowed.
+
 	gradientdata = graddat;
 	pixeldata = pixdat;
 	if ((buf >= h / 2) || (buf >= w / 2))
@@ -45,6 +54,8 @@ Cell::Cell(GradData* graddat, SPixelData* pixdat, int cx, int cy, int w, int h, 
 	numPixels = 0;
 	head = NULL;
 	tail = NULL;
+	seed.x = -1;
+	seed.y = -1;
 }
 
 Cell::~Cell()
@@ -54,6 +65,11 @@ Cell::~Cell()
 
 bool Cell::FindSeed(SPixelData* mask, int mask_value)
 {
+	// Function to find the watershed seed for this cell.
+	// mask is optional.  If it is present, the mask_value defines
+	// in the mask which identifiers are considered to be part of
+	// the mask.
+
 	bool ignore_mask;
 	unsigned char min = 255;
 	int count = 0;

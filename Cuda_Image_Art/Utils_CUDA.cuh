@@ -35,6 +35,8 @@ __global__ void set_single_value(float* matrix, int w, int h, int x, int y, floa
 __global__ void test_int_row(int* matrix, int w, int h, int row, int value, bool* result);
 __global__ void test_int_column(int* matrix, int w, int h, int column, int value, bool* result);
 __global__ void test_Bool_Array(bool* array, int w, int h, bool* result);
+__global__ void min_UChar_Array(unsigned char* array, int N, unsigned char* out_value);
+__global__ void min_UChar_Array_portion(unsigned char* array, int width, int height, int x_offset, int y_offset, int target_width, int target_height, unsigned char* out_value);
 
 
 class SparseFloatMatrix
@@ -112,6 +114,8 @@ bool CopyFromHost(int* source, int N, int* dest);
 bool CopyToHost(int* source, int N, int* dest);
 bool OnDeviceCopy(int* source, int N, int* dest);
 bool WriteOutIntArray(int* source, int x, int y, std::string name, int min, int max);
+int GetValueIntArray(int* source, int width, int height, int x, int y);
+bool SetValueIntArray(int* dest, int width, int height, int x, int y, int value);
 
 // Matrix operations for unsigned char arrays.
 unsigned char* UCharArray(int x, int y, bool initialize_value, unsigned char value = 0);
@@ -120,7 +124,10 @@ bool ResetUCharArray(unsigned char* a, int w, int h, unsigned char value = 0);
 bool CopyFromHost(unsigned char* source, int N, unsigned char* dest);
 bool CopyToHost(unsigned char* source, int N, unsigned char* dest);
 bool OnDeviceCopy(unsigned char* source, int N, unsigned char* dest);
-bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name);
+bool WriteOutUCharArray(unsigned char* source, int width, int height, std::string name);
+unsigned char GetValueUCharArray(unsigned char* source, int width, int height, int x, int y);
+unsigned char GetMinUCharArray(unsigned char* source, int width, int height);
+unsigned char GetMinUCharArrayPortion(unsigned char* source, int width, int height, int x_offset, int y_offset, int target_width, int target_height);
 
 // Test for return values.
 bool TestResult(int w, int h, bool* ResultsArray, bool* c_result);

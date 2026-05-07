@@ -252,6 +252,119 @@ __global__ void test_int_column(int* matrix, int w, int h, int column, int value
 	}
 }
 
+__global__ void min_UChar_Array(unsigned char* array, int N, unsigned char* out_value)
+{
+	// Kernel to find the smallest value within an unsigned char array of size N.
+	// The value is placed in out_value.
+	// The kernel should be called on only one block.  The threads each write to their own
+	// memory location, which avoids race conditions on those writes.
+
+	__shared__ unsigned char min_array[threads_per_block]; // One minimum calculated for each thread.
+	if (0 == blockIdx.x)
+	{
+		int idx = threadIdx.x;
+		min_array[idx] = 255; // Maximum value for unsigned char.
+		for (int i = idx; i < N; i += threads_per_block) // Striding through the array.
+		{
+			if (array[i] < min_array[idx])
+			{
+				min_array[idx] = array[i];
+			}
+		}
+		__syncthreads(); // Wait for all threads to finish.
+
+		// Reduce the thread_min array to one element.  Don't assume that threads_per_block is a power of two (although it almost always is).
+		unsigned int working_set = threads_per_block;
+		while (working_set > 1)
+		{
+			int half_ceiling = (working_set + 1) / 2; // Handle case where working_set is odd.
+			if ((idx < half_ceiling) && (idx + half_ceiling < working_set))
+			{
+				if (min_array[idx + half_ceiling] < min_array[idx])
+				{
+					min_array[idx] = min_array[idx + half_ceiling];
+				}
+			}
+			working_set = half_ceiling;
+			__syncthreads(); // Each pass through the reduction process needs to way for all threads to complete.
+		}
+
+		// Write out the final answer.
+		if (0 == idx)
+		{
+			*out_value = min_array[0];
+		}
+	}
+}
+
+__global__ void min_UChar_Array_portion(unsigned char* array, int width, int height, int x_offset, int y_offset, int target_width, int target_height, unsigned char* out_value)
+{
+	// Kernel to find the smallest value within a portion of an unsigned char array defined by dimensions width and height.
+	// x_offset and y_offset define the start of the region to be examined.
+	// target_width and target_height define the size of the region to be examined.
+	// The value is placed in out_value.
+	// The kernel should be called on only one block.  The threads each write to their own
+	// memory location, which avoids race conditions on those writes.
+
+	__shared__ unsigned char min_array[threads_per_block]; // One minimum calculated for each thread.
+	if ((0 == blockIdx.x) && (x_offset < width) && (y_offset < height) && (x_offset >= 0) && (y_offset >= 0)) // Only one block, and do basic dimension testing.
+	{
+		int N = width * height;
+		// Adjust portion dimensions if necessary.
+		if (x_offset + target_width > width)
+		{
+			target_width = width - x_offset;
+		}
+		if (y_offset + target_height > height)
+		{
+			target_height = height - y_offset;
+		}
+		if ((target_width > 0) && (target_height > 0))
+		{
+			int N_portion = target_width * target_height; // Number of elements in the target portion of the array.
+
+			int idx = threadIdx.x;
+			min_array[idx] = 255; // Maximum value for unsigned char.
+			for (int i = idx; i < N_portion; i += threads_per_block) // Striding through portion of the array.
+			{
+				int portion_x = i % target_width; // x value within window of the target region.
+				int portion_y = i / target_width; // y value within window of the target region.
+				int x = x_offset + portion_x; // Overall x value.
+				int y = y_offset + portion_y; // Overall y value.
+				int pos = x + y * width; // Position of the element within the full array.
+				if (array[pos] < min_array[idx])
+				{
+					min_array[idx] = array[pos];
+				}
+			}
+			__syncthreads(); // Wait for all threads to finish.
+
+			// Reduce the thread_min array to one element.  Don't assume that threads_per_block is a power of two (although it almost always is).
+			unsigned int working_set = threads_per_block;
+			while (working_set > 1)
+			{
+				int half_ceiling = (working_set + 1) / 2; // Handle case where working_set is odd.
+				if ((idx < half_ceiling) && (idx + half_ceiling < working_set))
+				{
+					if (min_array[idx + half_ceiling] < min_array[idx])
+					{
+						min_array[idx] = min_array[idx + half_ceiling];
+					}
+				}
+				working_set = half_ceiling;
+				__syncthreads(); // Each pass through the reduction process needs to wait for all threads to complete.
+			}
+
+			// Write out the final answer.
+			if (0 == idx)
+			{
+				*out_value = min_array[0];
+			}
+		}
+	}
+}
+
+
 float* GaussKernel(int gauss_radius, float gauss_thin_factor)
 {
 	// Gaussian smoothing.  
@@ -1076,14 +1189,54 @@ bool WriteOutIntArray(int* source, int x, int y, std::string name, int min, int 
 	return ret;
 }
 
-bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name)
+int GetValueIntArray(int* source, int width, int height, int x, int y)
+{
+	// Return the indicated value in a IntArray.
+
+	cudaError_t cudaStatus;
+	int ret = 0;
+
+	if ((x >= 0) && (y >= 0) && (x < width) && (y < height))
+	{
+		int pos = x + y * width;
+		// Copy the value to the host.
+		cudaStatus = cudaMemcpy(&ret, &source[pos], sizeof(int), cudaMemcpyDeviceToHost);
+		if (cudaStatus != cudaSuccess)
+		{
+			throw std::runtime_error("Failed to copy result to host in GetValueIntArray.\n");
+			return -1;
+		}
+	}
+	return ret;
+}
+
+bool SetValueIntArray(int* dest, int width, int height, int x, int y, int value)
+{
+	// Set a value in an IntArray.
+	cudaError_t cudaStatus;
+	bool ret = true;
+	if ((x >= 0) && (y >= 0) && (x < width) && (y < height))
+	{
+		int pos = x + y * width;
+		// Copy the value to the host.
+		cudaStatus = cudaMemcpy(&dest[pos], &value, sizeof(int), cudaMemcpyHostToDevice);
+		if (cudaStatus != cudaSuccess)
+		{
+			throw std::runtime_error("Failed to copy result to host in SetValueIntArray.\n");
+			return false;
+		}
+	}
+	return ret;
+}
+
+bool WriteOutUCharArray(unsigned char* source, int width, int height, std::string name)
 {
 	bool ret = true;
 	cudaError_t cudaStatus;
 	unsigned char* data;
 	unsigned char* h_source;
 
-	data = (unsigned char*)malloc(sizeof(unsigned char) * x * y * 3);
+	data = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
 	if (NULL == data)
 	{
 		throw std::runtime_error("Failed to allocate data for image.\n");
@@ -1091,7 +1244,7 @@ bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name)
 	}
 	if (ret)
 	{
-		h_source = (unsigned char*)malloc(sizeof(unsigned char) * x * y);
+		h_source = (unsigned char*)malloc(sizeof(unsigned char) * width * height);
 		if (NULL == h_source)
 		{
 			throw std::runtime_error("Failed to allocate host data for WriteOutUCharArray.\n");
@@ -1100,25 +1253,25 @@ bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name)
 	}
 	if (ret)
 	{
-		cudaStatus = cudaMemcpy(h_source, source, x * y * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+		cudaStatus = cudaMemcpy(h_source, source, width * height * sizeof(unsigned char), cudaMemcpyDeviceToHost);
 		if (cudaStatus != cudaSuccess)
 		{
 			ret = false;
 			std::cout << "Error copying memory from device to host in WriteOutUCharArray.\n";
 		}
 		long pos = 0;
-		for (int j = 0; j < y; ++j)
+		for (int j = 0; j < height; ++j)
 		{
-			for (int i = 0; i < x; ++i)
+			for (int i = 0; i < width; ++i)
 			{
-				long image_pos = 3 * (j * x + i);
+				long image_pos = 3 * (j * width + i);
 				data[image_pos] = h_source[pos];
 				data[image_pos + 1] = h_source[pos];
 				data[image_pos + 2] = h_source[pos];
 				pos++;
 			}
 		}
-		if (0 == stbi_write_png(name.c_str(), x, y, 3, data, x * 3))
+		if (0 == stbi_write_png(name.c_str(), width, height, 3, data, width * 3))
 		{
 			throw std::runtime_error("Unable to write out matrix image in WriteOutUCharArray.\n");
 			ret = false;
@@ -1126,6 +1279,82 @@ bool WriteOutUCharArray(unsigned char* source, int x, int y, std::string name)
 		free(data);
 		free(h_source);
 	}
+	return ret;
+}
+
+unsigned char GetValueUCharArray(unsigned char* source, int width, int height, int x, int y)
+{
+	// Return the indicated value in a UCharArray.
+
+	cudaError_t cudaStatus;
+	unsigned char ret = 0;
+
+	if ((x >= 0) && (y >= 0) && (x < width) && (y < height))
+	{
+		int pos = x + y * width;
+		// Copy the value to the host.
+		cudaStatus = cudaMemcpy(&ret, &source[pos], sizeof(unsigned char), cudaMemcpyDeviceToHost);
+		if (cudaStatus != cudaSuccess)
+		{
+			throw std::runtime_error("Failed to copy result to host in GetValueUCharArray.\n");
+			return 255;
+		}
+	}
+	return ret;
+}
+
+unsigned char GetMinUCharArray(unsigned char* source, int width, int height)
+{
+	// Return the minimum value in a UCharArray.
+	cudaError_t cudaStatus;
+	unsigned char ret = 255;
+	unsigned char* device_ret_val = UCharArray(1, 1, false);
+	min_UChar_Array << <1, threads_per_block >> > (source, width * height, device_ret_val); // Call on only one block.
+	cudaDeviceSynchronize();
+	cudaStatus = cudaGetLastError();
+	if (cudaStatus != cudaSuccess)
+	{
+		throw std::runtime_error("Failed in min_UChar_Array.\n");
+		return 255;
+	}
+	// Copy the result back to the host.
+	cudaStatus = cudaMemcpy(&ret, device_ret_val, sizeof(unsigned char), cudaMemcpyDeviceToHost);
+	if (cudaStatus != cudaSuccess)
+	{
+		throw std::runtime_error("Failed to copy result to host in GetMinUCharArray.\n");
+		return 255;
+	}
+	FreeUCharArray(device_ret_val);
+	return ret;
+}
+
+unsigned char GetMinUCharArrayPortion(unsigned char* source, int width, int height, int x_offset, int y_offset, int target_width, int target_height)
+{
+	// Return the minimum value in a portion of a UCharArray.
+	// source is the full UCharArray.
+	// width and height define the dimensions of source.
+	// x_offset and y_offset mark the beginning of the region being examined.
+	// target_width and target_height define the size of the region being examined.
+
+	cudaError_t cudaStatus;
+	unsigned char ret = 255;
+	unsigned char* device_ret_val = UCharArray(1, 1, false); // Allocate one memory location on the device.
+	min_UChar_Array_portion << <1, threads_per_block >> > (source, width, height, x_offset, y_offset, target_width, target_height, device_ret_val); // Call on only one block.
+	cudaDeviceSynchronize();
+	cudaStatus = cudaGetLastError();
+	if (cudaStatus != cudaSuccess)
+	{
+		throw std::runtime_error("Failed in min_UChar_Array.\n");
+		return 255;
+	}
+	// Copy the result back to the host.
+	cudaStatus = cudaMemcpy(&ret, device_ret_val, sizeof(unsigned char), cudaMemcpyDeviceToHost);
+	if (cudaStatus != cudaSuccess)
+	{
+		throw std::runtime_error("Failed to copy result to host in GetMinUCharArray.\n");
+		return 255;
+	}
+	FreeUCharArray(device_ret_val);
 	return ret;
 }
 

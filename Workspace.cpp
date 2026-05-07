@@ -482,6 +482,27 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 	}
 	else {
 		std::cout << "\nFinding initial seeds ";
+#ifdef USE_CUDA
+		std::vector <PointPair> seed_list;
+		seed_list = c_find_seeds(width, height, edge, pixeldata, list_head, xdiv, ydiv, 2);
+		std::vector<PointPair>::iterator it;
+		for (it = seed_list.begin(); it != seed_list.end(); ++it)
+		{
+			PointPair seed = *it;
+			count++;
+			std::cout << ".";
+			if (NULL == list_head)
+			{
+				list_head = new SuperPixel(count, edge, pixeldata, seed, NULL, NULL, this, SPType_Plain);
+				InsertSPIntoIndex(list_head);
+				list_tail = list_head;
+			}
+			else {
+				list_tail = new SuperPixel(count, edge, pixeldata, seed, NULL, list_head->GetTail(), this, SPType_Plain);
+				InsertSPIntoIndex(list_tail);
+			}
+		}
+#else
 		for (int j = ydiv / 2; j < height; j = j + ydiv)
 		{
 			for (int i = xdiv / 2; i < width; i = i + xdiv)
@@ -509,6 +530,8 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 				}
 			}
 		}
+#endif
+		std::cout << "\n" << count << " seeds\n";
 	}
 	return true;
 }
@@ -526,7 +549,7 @@ bool WorkSpace::Watershed()
 	std::cout << "\n256 Levels: ";
 	// Implement actual waterpixel algorithm.
 #ifdef USE_CUDA
-	 
+
 	ret = c_watershed_grow(width, height, list_head);
 	if (false == ret)
 	{
@@ -1735,7 +1758,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 				img->CreateBrush({ 100.0, 100.0 }, current->GetAveColor(), second, ave_radius, prop, watercolor_pigment_index);
 				if (prop.paint_mask)
 				{
-						img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
+					img->PaintCurve(curve, local_pixdata, current->GetIdentifier());
 				}
 				else {
 					img->PaintCurve(curve, NULL, 0);
@@ -1813,7 +1836,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 		}
 #ifdef USE_CUDA
 		if (prop.watercolor)
-		{			
+		{
 			if (!img->ProcessWatercolor())
 			{
 				throw std::runtime_error("Error on ProcessWatercolor function call from GenerateImage.\n");
