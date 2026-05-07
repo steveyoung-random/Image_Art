@@ -28,7 +28,7 @@ Other finishing effects are planned.
 - **Flexibility:** Use ImageArt to experiment and create visually interesting art from photographs. While not all photographs are suitable, those with large, interesting shapes of similar colors or structural patterns work well.  Playing with the settings, and sometimes trying extreme settings, often results in striking results.  Here is a highly stylized image I created from a photograph of jellyfish:
 ![Fuzzy Brush Jellyfish](Examples/Fuzzy_Brush_Jellyfish.png)
 
-- **Cross-Platform Compatibility:** ImageArtworks as-is with Visual Studio targeting Windows.  Earlier versions compiled and ran fine on Linux, but the current version will need some minor fixes to compile and run on Linux.  I am planning to get this working on Linux again soon.
+- **Cross-Platform Compatibility:** ImageArt works as-is with Visual Studio targeting Windows.  Earlier versions compiled and ran fine on Linux, but the current version will need some minor fixes to compile and run on Linux.  I am planning to get this working on Linux again soon.
 
 ## License
 
