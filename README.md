@@ -6,7 +6,7 @@
 
 ImageArt is a work-in-progress command-line tool designed for artists who want to transform digital photographs into visually interesting works of art.  Although there are reasonable defaults that may do something interesting with your photos, in practice you should spend some time getting to know the input parameters and iteratively adjusting them to get the effect you want for your images.  There is no right way to do this, it is art.
 
-There are now two variants of the tool included.  One uses only CPU resources to do all the work, and it is called Image_Art.exe.  Another uses an NVIDA GPU to do many of the calculations, and it produces results much more quickly.  It is called Cuda_Image_Art.exe.  The GPU version includes the work I have been doing to simulate something like watercolor painting effects.  The process it uses is too time-intensive to run on the CPU alone (even using AVX2 CPU instructions to speed it up).
+There are now two variants of the tool included.  One uses only CPU resources to do all the work, and it is called Image_Art.exe.  Another uses an NVIDIA GPU to do many of the calculations, and it produces results much more quickly.  It is called Cuda_Image_Art.exe.  The GPU version includes the work I have been doing to simulate something like watercolor painting effects.  The process it uses is too time-intensive to run on the CPU alone (even using AVX2 CPU instructions to speed it up).
 
 Since the world has changed a lot in the last three years I have been working on this, I feel like I need to explain that this is not AI.  The processes by which this software creates images does not use neural networks or any other AI technology.  It is based on image-processing algorithms, and has all been hand coded by me (and maybe soon one of my kids, if I can get them interested).
 
@@ -46,7 +46,7 @@ The project is built with Visual Studio 2022 on Windows.  Open `Image_Art.sln` a
 
 The solution also contains a `CudaBrushTest` project reference.  That project can be ignored.  It was a separate testbed used while working out the CUDA code for the watercolor painting behavior.
 
-There are a few local paths in the project files that may need to be changed for another setup.  `Image_Art.cpp` sets the default output directory to `D:\temp\`, although this can be overridden when running the program with the `path` tag.  Also in `Image_Art.cpp` is a named test file, which is `SNC00015.jpg`.  This is file I use for testing, and the value should be replaced with something you have on hand.  It is only used if no `filename` tag is used when running the program.
+There are a few local paths in the project files that may need to be changed for another setup.  `Image_Art.cpp` sets the default output directory to `D:\temp\`, although this can be overridden when running the program with the `path` tag.  Also in `Image_Art.cpp` is a named test file, which is `SNC00015.jpg`.  This is a file I use for testing, and the value should be replaced with something you have on hand.  It is only used if no `filename` tag is used when running the program.
 
 I find that keeping a directory outside of the actual project directory for running and testing the program is useful.  So, the Visual Studio project files also include post-build commands that copy the built executables into the local directory that I use for this: `D:\VS Projects\Image_Art_Extra\`.  These copy commands can be edited or removed if that directory does not exist.  The `Image_Art.vcxproj.user` file contains debugger arguments with local image and output paths; those only affect debugging from Visual Studio.
 
@@ -99,7 +99,7 @@ Tags can be passed as `tag=value`, `tag =value`, or `tag value`. Some tags are b
 - `dilate`, `predilate`, `pre_dilate`, `pre-dilate`: Preprocessing dilation shape.  Use `0` for a square structuring element and `1` for a circle.  The default is `1`.
 - `grad`, `gradthickness`, `grad_thickness`: Gradient thickness.  The default is `3`, and values below `3` are raised to `3`.
 - `close_first`, `reverse`: Binary.  Reverses the normal preprocessing order.  By default, smoothing first uses an opening transformation, where small connections between areas may be lost, followed by a closing transformation, where nearby objects may form a connection.  Setting this to `1` does the closing step before the opening step.  The default is `0`.
-- `snap`, `k`: Adds semi-permiable barriers around the edges of each starting cell, where each cell is one `xdiv` by `ydiv` region of the image.  Higher values make superpixels less likely to extend across those cell boundaries, which can create a boxier result.  The default is `0`, which has no effect.  A value near `5` is pronounced, and a value near `20` makes cross-cell growth rare.
+- `snap`, `k`: Adds semi-permeable barriers around the edges of each starting cell, where each cell is one `xdiv` by `ydiv` region of the image.  Higher values make superpixels less likely to extend across those cell boundaries, which can create a boxier result.  The default is `0`, which has no effect.  A value near `5` is pronounced, and a value near `20` makes cross-cell growth rare.
 
 ### Post-processing and SVG output
 
