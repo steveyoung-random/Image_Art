@@ -1,4 +1,8 @@
 #pragma once
+
+// Copyright (c) 2026 Steve Young
+// Licensed under the MIT License
+
 #define _USE_MATH_DEFINES
 #include <vector>
 #include <set>

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Steve Young
+// Licensed under the MIT License
+
 #include "Paper.h"
 #include "CUDA_Image_Art\Brush_CUDA.cuh"
 
