@@ -7,8 +7,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Image_Art", "Image_Art.vcxp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cuda_Image_Art", "Cuda_Image_Art\Cuda_Image_Art.vcxproj", "{248E02A9-A6F1-493E-A746-8081A595FB3B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CudaBrushTest", "..\CudaBrushTest\CudaBrushTest.vcxproj", "{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -33,14 +31,6 @@ Global
 		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x64.Build.0 = Release|x64
 		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x86.ActiveCfg = Release|x64
 		{248E02A9-A6F1-493E-A746-8081A595FB3B}.Release|x86.Build.0 = Release|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Debug|x64.ActiveCfg = Debug|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Debug|x64.Build.0 = Debug|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Debug|x86.ActiveCfg = Debug|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Debug|x86.Build.0 = Debug|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Release|x64.ActiveCfg = Release|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Release|x64.Build.0 = Release|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Release|x86.ActiveCfg = Release|x64
-		{C49C5A7A-3C28-4F6D-B4C5-73A183764C6B}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
