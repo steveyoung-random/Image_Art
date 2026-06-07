@@ -567,7 +567,8 @@ bool c_gen_gray(unsigned char* c_device_data_input, int x, int y, int channels, 
 			cudaStatus = cudaGetLastError();
 			if (cudaStatus != cudaSuccess)
 			{
-				throw std::runtime_error("Failed in process_gen_grayscale.\n");
+				std::cout << cudaGetErrorString(cudaStatus) << "\n";
+				throw std::runtime_error("Failed in process_gen_grayscale\n");
 				return false;
 			}
 		}
@@ -577,6 +578,7 @@ bool c_gen_gray(unsigned char* c_device_data_input, int x, int y, int channels, 
 			cudaStatus = cudaGetLastError();
 			if (cudaStatus != cudaSuccess)
 			{
+				std::cout << cudaGetErrorString(cudaStatus) << "\n";
 				throw std::runtime_error("Failed in process_gen_grayscale_c.\n");
 				return false;
 			}
@@ -588,6 +590,7 @@ bool c_gen_gray(unsigned char* c_device_data_input, int x, int y, int channels, 
 			cudaStatus = cudaGetLastError();
 			if (cudaStatus != cudaSuccess)
 			{
+				std::cout << cudaGetErrorString(cudaStatus) << "\n";
 				throw std::runtime_error("Failed in process_gen_grayscale_c_nc.\n");
 				return false;
 			}

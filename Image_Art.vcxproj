@@ -116,7 +116,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "D:\VS Projects\Image_Art\x64\Debug\Image_Art.exe" "D:\VS Projects\Image_Art_Extra\Debug\Image_Art.exe"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -138,7 +139,8 @@
       <Profile>true</Profile>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "D:\VS Projects\Image_Art\x64\Release\Image_Art.exe" "D:\VS Projects\Image_Art_Extra\Release\Image_Art.exe"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

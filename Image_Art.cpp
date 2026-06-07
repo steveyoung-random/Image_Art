@@ -20,7 +20,7 @@
 #define CHANNEL 0
 #define NCHANNEL 0
 #define GRADTHICKNESS 3
-#define PATH "D:\\temp\\"
+#define PATH "Output\\"
 #define OUTPUT "output"
 #define FINE false;
 #define POLYGON true;

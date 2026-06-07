@@ -119,7 +119,8 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>copy /Y "D:\VS Projects\Image_Art\x64\Release\Cuda_Image_Art.exe" "D:\VS Projects\Image_Art_Extra\Release\Cuda_Image_Art.exe"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
