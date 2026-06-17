@@ -4,7 +4,7 @@
 
 ## Description
 
-ImageArt is a work-in-progress command-line tool designed for artists who want to transform digital photographs into visually interesting works of art.  Although there are reasonable defaults that may do something interesting with your photos, in practice you should spend some time getting to know the input parameters and iteratively adjusting them to get the effect you want for your images.  There is no right way to do this, it is art.
+ImageArt is a work-in-progress command-line tool designed for artists who want to transform digital photographs into visually interesting works of art.  Although there are reasonable defaults that may do something interesting with your photos, in practice you should spend some time getting to know the input parameters and iteratively adjusting them to get the effect you want for your images.  There is no right way to do this; it is art.
 
 There are now two variants of the tool included.  One uses only CPU resources to do all the work, and it is called Image_Art.exe.  Another uses an NVIDIA GPU to do many of the calculations, and it produces results much more quickly.  It is called Cuda_Image_Art.exe.  The GPU version includes the work I have been doing to simulate something like watercolor painting effects.  The process it uses is too time-intensive to run on the CPU alone (even using AVX2 CPU instructions to speed it up).
 
@@ -12,7 +12,7 @@ Since the world has changed a lot in the last three years I have been working on
 
 ## Key Features
 
-- **Abstract Art Creation:** ImageArt primarily transforms shapes from an original image (such as a photograph) into uniform-colored and smoothed shapes.  Sometimes, this is all you want.  An example of that is this image of tulips (which was recently selected by my city to be included on wraps around utility boxes):
+- **Abstract Art Creation:** ImageArt primarily transforms shapes from an original image (such as a photograph) in png or jpeg format into uniform-colored and smoothed shapes.  Sometimes, this is all you want.  An example of that is this image of tulips (which was recently selected by my city to be included on wraps around utility boxes):
 ![Abstract Tulips](Examples/Abstract_Tulips.png)
 Other times, this is just the starting point for you to figure out what you want to do to create something new.  For example, here is an image I made by combining the base color shapes with the gradient file output for the same image, to give more definition to some of the edges:
 ![Tulips 2](Examples/Tulips_2.png)
@@ -54,9 +54,9 @@ This is a command line application.  You pass various pairs of tags and values t
 
 1. Open your Windows Command Prompt.
 
-2. Type a command in this form to run ImageArt (replace `Imageart.exe` with the appropriate executable name for your platform):
+2. Type a command in this form to run ImageArt (replace `Image_art.exe` with the appropriate executable name for your platform):
 
-	`Imageart.exe tag1=value1 tag2=value2 ...`
+	`Image_art.exe tag1=value1 tag2=value2 ...`
 
 3. Specify the input image using the `filename` tag in the Windows path convention:
 
@@ -64,7 +64,7 @@ This is a command line application.  You pass various pairs of tags and values t
 
 4. Customize your artwork using additional tags and values, as needed. The available tags are listed below.
 
-5. Specify the output directory using the `path` tag (if different from the default "d:\temp"):
+5. Specify the output directory using the `path` tag (if different from the default):
 
 	`path="C:\path\to\output\files"`
 
@@ -77,7 +77,7 @@ Tags can be passed as `tag=value`, `tag =value`, or `tag value`. Some tags are b
 ### Input and output
 
 - `filename`, `f`: Input image filename.  The current source code sets a test default of `SNC00015.jpg`; normal use should pass this tag explicitly.
-- `path`: Output directory.  The current default is `D:\temp\`.  A trailing backslash is added if needed.
+- `path`: Output directory.  The current default looks for a folder named Output in the same location where the program is being run.  A trailing backslash is added if needed.
 - `file_output`, `fo`, `output`: Selects which files to write.  The value is the sum of the output options for a run.  The default is `255`, which enables all currently defined output bits.  Use `1` for gray, edge, skeleton, and paint path diagnostics; `2` for the base PNG; `4` for the base SVG; `8` for the post-processed PNG; `16` for the post-processed SVG; `32` for the painted PNG; and `64` for progressive paint.  For example, `16` writes only the post-processed SVG, while `20` writes both the base PNG and the post-processed SVG.  Progressive paint is not currently supported by the CUDA version.
 - `inpath`: Directory used to locate existing intermediate files.  If `spfile`, `grayfile`, or `edgefile` are not set, this directory is used with `SuperPixels.dat`, `output_gray.png`, and `output_edge.png`.
 - `spfile`: Reads superpixel data from a file instead of starting from the original image.
