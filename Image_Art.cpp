@@ -32,7 +32,12 @@
 #define CLOSE_FIRST false;
 #define TEST_FILE "SNC00015.jpg"
 // File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint
-#define FILE_OUTPUT 255
+#ifdef USE_CUDA 
+	#define FILE_OUTPUT 63
+#else
+	#define FILE_OUTPUT 255
+#endif
+
 
 
 int main(int argc, char** argv)
