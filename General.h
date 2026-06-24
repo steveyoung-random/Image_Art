@@ -54,9 +54,9 @@
 
 // Watercolor defines
 
-#define mu 0.1f // wet: 0.020f dry: 0.05f 0.005 - 0.05f
-#define kappa 0.04f // wet: 0.001f dry: 0.001f 0.001f - 0.040f
-#define absorption_alpha 0.001f // wet: 0.1f dry: 0.001f 0.1f
+#define mu 0.01f // wet: 0.020f dry: 0.1f 0.005 - 0.1f
+#define kappa 0.01f // wet: 0.001f dry: 0.001f 0.001f - 0.040f
+#define absorption_alpha 0.001f // wet: 0.1f dry: 0.001f 0.1f  Artifacts when lower than ~0.075f  *** Adjust larger as run progresses?
 #define saturation_sigma 0.1f // wet: 0.1 f dry: 0.1f 0.1f
 #define saturation_dry_value 0.005f // wet: 0.005f dry: 0.005f
 #define saturation_epsilon 0.999f // wet: 0.9f dry: 0.999f 0.9
@@ -67,12 +67,12 @@
 #define tau 0.005f // wet: 0.005f dry: 0.005f 0.01f, 0.005f
 #define xi 0.15f // wet: 0.15f dry: 0.15f 0.1f
 #define K_radius 5 // wet: 5 dry: 5 5
-#define eta 0.05f // wet: 0.001f dry: 0.05f 0.03f
+#define eta 0.5f // wet: 0.001f dry: 0.05f 0.03f
 #define pigment_lag 0.85f // wet: 1.0f dry: 0.85f
 #define slope_factor 1.0f // wet: 1.0f dry: 1.0f 1.0f
 #define slope_velocity_steps 400 // wet: 400 dry: 400
 #define max_velocity 2.5f // wet: 2.5f dry: 2.5f 2.5f
-#define render_g_value 0.0f // wet: 0.8f dry: 0.45f 0.2 -0.035f
+#define render_g_value 0.00f // wet: 0.8f dry: 0.45f 0.2 -0.035f
 #define process_steps 100 // wet: 400 dry: 400 1400
 // Set pressure_delta to -1 for speckled image with more water dispertion
 #define pressure_delta 1 // wet: 1 dry: 1
