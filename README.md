@@ -42,7 +42,7 @@ The project is built with Visual Studio 2022 on Windows.  Open `Image_Art.sln` a
 
 `Image_Art` is the CPU version.  It uses the Visual Studio `17.14.31 (April 2026)` toolset, the Windows 10 SDK, and C++20 for the x64 configurations.  The x64 build also enables AVX2 instructions.
 
-`Cuda_Image_Art` is the GPU version.  It builds only for x64 and uses the Visual Studio `17.14.31 (April 2026)` toolset, C++17, and CUDA 13.3.  A compatible NVIDIA GPU and CUDA Toolkit installation are required for this project.
+`Cuda_Image_Art` is the GPU version.  It builds only for x64 and uses the Visual Studio `17.14.31 (April 2026)` toolset, C++17, and CUDA 13.3.  A compatible NVIDIA GPU (610+) and CUDA Toolkit installation are required for this project.
 
 There are a few local paths in the project files that may need to be changed for another setup.  `Image_Art.cpp` sets the default output directory to `Output`, although this can be overridden when running the program with the `path` tag.  Also in `Image_Art.cpp` is a named test file, which is `SNC00015.jpg`.  This is a file I use for testing, and the value should be replaced with something you have on hand.  It is only used if no `filename` tag is used when running the program.
 
