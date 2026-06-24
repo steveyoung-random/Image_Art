@@ -30,7 +30,7 @@
 #define EARLY_PALETTE false;
 #define SEEDS_OUT false;
 #define CLOSE_FIRST false;
-#define TEST_FILE "SNC00015.jpg"
+#define TEST_FILE "test.jpg"
 // File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint
 #ifdef USE_CUDA 
 	#define FILE_OUTPUT 63
