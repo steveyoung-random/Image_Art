@@ -74,13 +74,14 @@ Tags can be passed as `tag=value`, `tag =value`, or `tag value`. Some tags are b
 
 ### Input and output
 
-- `filename`, `f`: Input image filename.  The current source code sets a test default of `SNC00015.jpg`; normal use should pass this tag explicitly.
+- `filename`, `f`: Input image filename.  The current source code sets a test default of `test.jpg`; normal use should pass this tag explicitly.
 - `path`: Output directory.  The current default looks for a folder named Output in the same location where the program is being run.  A trailing backslash is added if needed.
 - `file_output`, `fo`, `output`: Selects which files to write.  The value is the sum of the output options for a run.  The default is `255`, which enables all currently defined output bits.  Use `1` for gray, edge, skeleton, and paint path diagnostics; `2` for the base PNG; `4` for the base SVG; `8` for the post-processed PNG; `16` for the post-processed SVG; `32` for the painted PNG; and `64` for progressive paint.  For example, `16` writes only the post-processed SVG, while `20` writes both the base PNG and the post-processed SVG.  Progressive paint is not currently supported by the CUDA version.
 - `inpath`: Directory used to locate existing intermediate files.  If `spfile`, `grayfile`, or `edgefile` are not set, this directory is used with `SuperPixels.dat`, `output_gray.png`, and `output_edge.png`.
 - `spfile`: Reads superpixel data from a file instead of starting from the original image.
 - `grayfile`: Sets the grayscale input file used with `inpath`.
 - `edgefile`: Sets the edge input file used with `inpath`.
+- `newname`, `outputname`: Sets the naming convention for the output files. Defaults to `output`.
 
 ### Shape detection
 

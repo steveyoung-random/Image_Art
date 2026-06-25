@@ -83,9 +83,11 @@ int main(int argc, char** argv)
 
 	try {
 		std::string filename = "";
+		std::string newname = "";
 #ifdef TEST
 		filename = TEST_FILE;
 		path = PATH;
+		newname = OUTPUT;
 #endif // TEST
 		std::string tag;
 		std::string value;
@@ -188,6 +190,10 @@ int main(int argc, char** argv)
 			else if ((tag == "f") || (tag == "filename"))
 			{
 				filename = value;
+			}
+			else if ((tag == "newname") || (tag == "outputname"))
+			{
+				newname = value;
 			}
 			else if ((tag == "fo") || (tag == "file_output") || (tag == "output"))
 			{
@@ -459,6 +465,10 @@ int main(int argc, char** argv)
 		{
 			throw std::runtime_error("Need to specify filename.\n");
 		}
+		if (newname == "")
+		{
+			newname = OUTPUT;
+		}
 		if (gradthickness < 3)
 		{
 			gradthickness = 3;
@@ -574,12 +584,12 @@ int main(int argc, char** argv)
 			if ("" == grayfile)
 			{
 				grayfile = inpath;
-				grayfile.append(OUTPUT).append("_gray.png");
+				grayfile.append(newname).append("_gray.png");
 			}
 			if ("" == edgefile)
 			{
 				edgefile = inpath;
-				edgefile.append(OUTPUT).append("_edge.png");
+				edgefile.append(newname).append("_edge.png");
 			}
 		}
 
@@ -607,7 +617,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(0, 0);
 			ImageData* gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_gray");
+			temppath.append(newname).append("_gray");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -615,7 +625,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(1, 0);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_red");
+			temppath.append(newname).append("_red");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -623,7 +633,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(2, 0);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_green");
+			temppath.append(newname).append("_green");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -631,7 +641,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(3, 0);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_blue");
+			temppath.append(newname).append("_blue");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -639,7 +649,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(1, 2);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_red_green");
+			temppath.append(newname).append("_red_green");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -647,7 +657,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(1, 3);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_red_blue");
+			temppath.append(newname).append("_red_blue");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -655,7 +665,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(2, 3);
 			gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_green_blue");
+			temppath.append(newname).append("_green_blue");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			delete gray;
@@ -690,7 +700,7 @@ int main(int argc, char** argv)
 			gray = image->gen_gray(channel, nchannel);
 			ImageData* gray_image = gray->Gradient2Image(1);
 			temppath = path;
-			temppath.append(OUTPUT).append("_gray");
+			temppath.append(newname).append("_gray");
 			gray_image->write_file(temppath);
 			delete gray_image;
 			std::cout << ".";
@@ -724,7 +734,7 @@ int main(int argc, char** argv)
 				edge = preprocessed_gray->Generate_Gradient(1, gradthickness, xdiv, ydiv, k);
 				gray_image = edge->Gradient2Image(0);
 				temppath = path;
-				temppath.append(OUTPUT).append("_edge_").append(std::to_string(w_size));
+				temppath.append(newname).append("_edge_").append(std::to_string(w_size));
 				gray_image->write_file(temppath);
 				delete gray_image;
 				delete edge;
@@ -732,14 +742,14 @@ int main(int argc, char** argv)
 				//edge = gray->gen_dilate_erode(1, pre_dilate_shape, w_size);
 				//gray_image = edge->Gradient2Image(1);
 				//temppath = path;
-				//temppath.append(OUTPUT).append("_dilate_").append(std::to_string(w_size));
+				//temppath.append(newname).append("_dilate_").append(std::to_string(w_size));
 				//gray_image->write_file(temppath);
 				//delete gray_image;
 				//delete edge;
 				//edge = gray->gen_dilate_erode(0, pre_erode_shape, w_size);
 				//gray_image = edge->Gradient2Image(1);
 				//temppath = path;
-				//temppath.append(OUTPUT).append("_erode_").append(std::to_string(w_size));
+				//temppath.append(newname).append("_erode_").append(std::to_string(w_size));
 				//gray_image->write_file(temppath);
 				//delete gray_image;
 				//delete edge;
@@ -816,7 +826,7 @@ int main(int argc, char** argv)
 			{
 				data_revised = workspace->GenerateImage(0, prop);
 				temppath = path;
-				temppath.append(OUTPUT);
+				temppath.append(newname);
 				data_revised->write_file(temppath);
 				std::cout << ".";
 				delete data_revised;
@@ -826,7 +836,7 @@ int main(int argc, char** argv)
   				workspace->ThinSuperPixels(false, prop.glitch3);
 				data_revised = workspace->GenerateImage(2, prop);
 				temppath = path;
-				temppath.append(OUTPUT).append("_skeleton");
+				temppath.append(newname).append("_skeleton");
 				data_revised->write_file(temppath);
 				std::cout << ".";
 				delete data_revised;
@@ -835,7 +845,7 @@ int main(int argc, char** argv)
 			{
 				data_revised = workspace->GenerateImage(3, prop);
 				temppath = path;
-				temppath.append(OUTPUT).append("_paint");
+				temppath.append(newname).append("_paint");
 				data_revised->write_file(temppath);
 				std::cout << ".";
 				delete data_revised;
@@ -851,7 +861,7 @@ int main(int argc, char** argv)
 			{
 				data_revised = workspace->GenerateImage(4, prop);
 				temppath = path;
-				temppath.append(OUTPUT).append("_prog_paint");
+				temppath.append(newname).append("_prog_paint");
 				data_revised->write_file(temppath);  // *** Bug - can be called with data_revised == NULL.
 				std::cout << ".";
 				delete data_revised;
@@ -869,7 +879,7 @@ int main(int argc, char** argv)
 				{
 					data_revised = workspace->GenerateImage(1, prop);
 					temppath = path;
-					temppath.append(OUTPUT).append("_post");
+					temppath.append(newname).append("_post");
 					data_revised->write_file(temppath);
 					std::cout << ".";
 					delete data_revised;
@@ -890,7 +900,7 @@ int main(int argc, char** argv)
 			{
 				ImageData* gray_image = workspace->Gradient2Image(4);
 				temppath = path;
-				temppath.append(OUTPUT).append("_gray");
+				temppath.append(newname).append("_gray");
 				gray_image->write_file(temppath);
 				delete gray_image;
 				std::cout << ".";
@@ -922,7 +932,7 @@ int main(int argc, char** argv)
 			{
 				ImageData* gradient_image = workspace->Gradient2Image(0);
 				temppath = path;
-				temppath.append(OUTPUT).append("_edge");
+				temppath.append(newname).append("_edge");
 				gradient_image->write_file(temppath);
 				delete gradient_image;
 				std::cout << ".";
@@ -1006,7 +1016,7 @@ int main(int argc, char** argv)
 					// Paint each pixel in each SuperPixel to the average color.
 					data_revised = workspace->GenerateImage(0, prop);
 					temppath = path;
-					temppath.append(OUTPUT);
+					temppath.append(newname);
 					data_revised->write_file(temppath);
 					delete data_revised;
 					std::cout << ".";
@@ -1026,7 +1036,7 @@ int main(int argc, char** argv)
 						workspace->ThinSuperPixels(false, prop.glitch3);
 						data_revised = workspace->GenerateImage(2, prop);
 						temppath = path;
-						temppath.append(OUTPUT).append("_skeleton");
+						temppath.append(newname).append("_skeleton");
 						data_revised->write_file(temppath);
 						std::cout << ".";
 						delete data_revised;
@@ -1045,7 +1055,7 @@ int main(int argc, char** argv)
 					{
 						data_revised = workspace->GenerateImage(3, prop);
 						temppath = path;
-						temppath.append(OUTPUT).append("_paint");
+						temppath.append(newname).append("_paint");
 						data_revised->write_file(temppath);
 						std::cout << ".";
 						delete data_revised;
@@ -1061,7 +1071,7 @@ int main(int argc, char** argv)
 					{
 						data_revised = workspace->GenerateImage(4, prop);
 						temppath = path;
-						temppath.append(OUTPUT).append("_prog_paint");
+						temppath.append(newname).append("_prog_paint");
 						data_revised->write_file(temppath);
 						std::cout << ".";
 						delete data_revised;
@@ -1079,7 +1089,7 @@ int main(int argc, char** argv)
 						{
 							data_revised = workspace->GenerateImage(1, prop);
 							temppath = path;
-							temppath.append(OUTPUT).append("_post");
+							temppath.append(newname).append("_post");
 							data_revised->write_file(temppath);
 							std::cout << ".";
 							delete data_revised;
