@@ -1222,11 +1222,9 @@ bool Convolve(float* input, int matrix_width, int matrix_height, int padding, fl
 {
 	bool ret = true;
 	cudaError_t cudaStatus;
-	int N = matrix_width * matrix_height;
 	int x = matrix_width + 2 * padding;
 	int y = matrix_height + 2 * padding;
 	int blocksPerGrid = (x * y + threads_per_block - 1) / threads_per_block;
-	int k_size = k_radius + 1;
 
 	if (ret)
 	{
@@ -1579,7 +1577,7 @@ bool CSetVelocity(float* u, float* v, int x, int y, int w, int h, float u_vel, f
 			ret = false;
 		}
 	}
-	return true;
+	return ret;
 }
 
 bool CRender(std::vector<Pigment*> pigments, unsigned char* data, int w, int h, float* substrate_color)
@@ -2092,8 +2090,6 @@ bool CudaDab3(cudaBrush* brush, SparseFloatMatrix* g, float saturation, float co
 		}
 
 		float scaled_spot_radius_squared = spot_radius * spot_radius * paint_scale * paint_scale;
-		bool new_stroke = false;
-		int bristle_kernel_side = 1 + BRISTLE_KERNEL / 2;
 		int mask_width = 0;
 		int mask_height = 0;
 		int* device_mask = NULL;
@@ -2129,8 +2125,6 @@ bool StartStroke(SparseFloatMatrix* sparse_g, float* full_g, int width, int heig
 bool EndStroke(SparseFloatMatrix* sparse_g, float* full_g, int width, int height)
 {
 	bool ret = true;
-	cudaError_t cudaStatus;
-	int blocksPerGrid = (chunk_size * chunk_size + threads_per_block - 1) / threads_per_block;
 	ret = sparse_g->UpdateChunks(); // Copy d_chunk_updates to h_chunk_updates, and allocate any new chunks needed.
 	if (!ret)
 	{

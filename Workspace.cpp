@@ -1774,7 +1774,7 @@ ImageData* WorkSpace::GenerateImage(int mode, Paint_Properties prop)
 			if (prop.watercolor)
 			{
 				std::cout << "\n" << count << "/" << set_size << "\n";
-				if (0 == count % 1)  // This processes each superpixel individually.
+				if (0 == count % 100)
 				{
 					if (!img->ProcessWatercolor())
 					{
