@@ -1,8 +1,12 @@
-// Copyright (c) 2023-2026 Steve Young
+// Copyright (c) 2023-2026 Steve Young and Kai Young
 // Licensed under the MIT License
 
 #include "Image_Art.h"
 //#include <chrono>
+#include <iostream>
+#include <list>
+#include <fstream>
+#include <string>
 
 #define PREWINDOW 3
 #define POSTWINDOW 0
@@ -31,6 +35,8 @@
 #define SEEDS_OUT false;
 #define CLOSE_FIRST false;
 #define TEST_FILE "test.jpg"
+#define CONFIG_FILE "Image_Art\\config.txt"
+#define MAX_INPUTS 50
 // File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint
 #ifdef USE_CUDA 
 	#define FILE_OUTPUT 63
@@ -84,26 +90,30 @@ int main(int argc, char** argv)
 	try {
 		std::string filename = "";
 		std::string newname = "";
+		std::string configname = "";
 #ifdef TEST
 		filename = TEST_FILE;
 		path = PATH;
 		newname = OUTPUT;
+		configname = CONFIG_FILE;
 #endif // TEST
 		std::string tag;
 		std::string value;
 
 		int argument = 1;
-		while (argument < argc)
-		{
+		int index = 0; 
+		std::list<std::string> commandlineinputs;
+		int max_args = 0; //used to keep track of how many total arguments there are between the config file and the command line
+		while(argument < argc){
 			argument++;
 			std::string input = argv[argument - 1];
 			int equal_loc = input.find("=");
-			if (equal_loc != std::string::npos)
+			if (equal_loc != std::string::npos) //checks if the argument is formatted like "tag=value"
 			{
 				tag = input.substr(0, equal_loc);
 				value = input.substr(equal_loc + 1, input.length() - equal_loc - 1);
 			}
-			else {
+			else { //handles inputs like "tag = value" or "tag =value"
 				tag = input;
 				argument++;
 				if (argument >= argc)
@@ -113,11 +123,11 @@ int main(int argc, char** argv)
 				input = argv[argument - 1];
 				if (input.find("=") == 0)
 				{
-					if (input.length() > 1)
+					if (input.length() > 1)//if the input is "tag =value"
 					{
 						value = input.substr(1, input.length() - 1);
 					}
-					else {
+					else { //checks if the input is "tag = value"
 						argument++;
 						if (argument >= argc)
 						{
@@ -126,11 +136,50 @@ int main(int argc, char** argv)
 						value = argv[argument - 1];
 					}
 				}
-				else {
+				else { //assumes the input is "tag value"
 					value = input;
 				}
 			}
+			if (tag == "config" || tag == "set"){ //if the command line input specifies a config file, use that one
+				configname = value;
+			} else { //if the input is not specifying a config file, add it to the list
+				tag.append("=").append(value);
+				commandlineinputs.push_front(tag);
+				index++;
+				max_args++;
+			}
 
+		}
+		//TODO: go get config file arguments
+   		std::fstream configfile(configname, std::fstream::in);
+		if (!configfile.is_open()){
+        	std::cout << "Config file not found\n";
+    	} else {
+        	while (getline(configfile, value)) {
+            	commandlineinputs.push_front(value);
+            	max_args++;
+        	}
+        	configfile.close();
+    	}
+		//TODO: Somehow add command line arguments and config file arguments to the same list, with command line arguments coming last
+		argument = 0;
+		while (argument < max_args) 
+		{
+			std::string input = commandlineinputs.front(); //change to check config file arguments first
+			commandlineinputs.pop_front();
+			int equal_loc = input.find("=");
+			if (equal_loc != std::string::npos) //they should have all been formatted this way
+			{
+				tag = input.substr(0, equal_loc);
+				value = input.substr(equal_loc + 1, input.length() - equal_loc - 1);
+			}
+			else {
+				//Incorrectly fomatted argument
+				std::cout << "Incorrectly formatted input: " << input << ", ignoring.\n";
+				argument++;
+				continue;
+			}
+			argument++;
 			if ((tag == "b") || (tag == "background"))
 			{
 				prop.background = atoi(value.c_str());

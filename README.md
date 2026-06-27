@@ -8,7 +8,7 @@ ImageArt is a work-in-progress command-line tool designed for artists who want t
 
 There are now two variants of the tool included.  One uses only CPU resources to do all the work, and it is called Image_Art.exe.  Another uses an NVIDIA GPU to do many of the calculations, and it produces results much more quickly.  It is called Cuda_Image_Art.exe.  The GPU version includes the work I have been doing to simulate something like watercolor painting effects.  The process it uses is too time-intensive to run on the CPU alone (even using AVX2 CPU instructions to speed it up).
 
-Since the world has changed a lot in the last three years I have been working on this, I feel like I need to explain that this is not AI.  The processes by which this software creates images does not use neural networks or any other AI technology.  It is based on image-processing algorithms, and has all been hand coded by me (and maybe soon one of my kids, if I can get them interested).
+Since the world has changed a lot in the last three years I have been working on this, I feel like I need to explain that this is not AI.  The processes by which this software creates images does not use neural networks or any other AI technology.  It is based on image-processing algorithms, and has all been hand coded by me and one of my kids.
 
 ## Key Features
 
@@ -44,7 +44,7 @@ The project is built with Visual Studio 2022 on Windows.  Open `Image_Art.sln` a
 
 `Cuda_Image_Art` is the GPU version.  It builds only for x64 and uses the Visual Studio `17.14.31 (April 2026)` toolset, C++17, and CUDA 13.3.  A compatible NVIDIA GPU and driver version (610+) and CUDA Toolkit installation are required for this project.
 
-There are a few local paths in the project files that may need to be changed for another setup.  `Image_Art.cpp` sets the default output directory to `Output`, although this can be overridden when running the program with the `path` tag.  Also in `Image_Art.cpp` is a named test file, which is `SNC00015.jpg`.  This is a file I use for testing, and the value should be replaced with something you have on hand.  It is only used if no `filename` tag is used when running the program.
+There are a few local paths in the project files that may need to be changed for another setup.  `Image_Art.cpp` sets the default output directory to `Output`, although this can be overridden when running the program with the `path` tag.  Also in `Image_Art.cpp` is a named test file, which is `test.jpg`.  This is a file I use for testing, and the value should be replaced with something you have on hand.  It is only used if no `filename` tag is used when running the program.
 
 ## Usage Instructions
 
@@ -82,6 +82,7 @@ Tags can be passed as `tag=value`, `tag =value`, or `tag value`. Some tags are b
 - `grayfile`: Sets the grayscale input file used with `inpath`.
 - `edgefile`: Sets the edge input file used with `inpath`.
 - `newname`, `outputname`: Sets the naming convention for the output files. Defaults to `output`.
+- `config`, `set`: Sets config file to use, which overrides base defaults but is overridden by command line input. Defaults to a file called `config.txt`.
 
 ### Shape detection
 
