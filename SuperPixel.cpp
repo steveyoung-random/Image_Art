@@ -311,6 +311,22 @@ int SuperPixel::GetIdentifier()
 	return identifier;
 }
 
+int SuperPixel::GetMaxIdentifier()
+{
+	// Return the largest identifier in this set of superpixels.
+	int ret = -1;
+	SuperPixel* current = GetHead();
+	while (current != NULL)
+	{
+		if (current->GetIdentifier() > ret)
+		{
+			ret = current->GetIdentifier();
+		}
+		current = current->GetNext();
+	}
+	return ret;
+}
+
 SuperPixel* SuperPixel::GetNext()
 {
 	return next;
@@ -664,7 +680,7 @@ bool SuperPixel::FindPaths(bool use_meeting_points, bool polygon, bool fine)
 					throw std::runtime_error("No path found for edge pixel.\n");
 					return false;
 				}
-				if (p->GetPointSet().size() > 3) 
+				if (p->GetPointSet().size() > 3)
 				{
 					if (NULL == path_list_head)
 					{
@@ -1246,7 +1262,8 @@ PointPair SuperPixel::Split(ImageData* image)
 	}
 
 	// Now, try out each new potential minimum.
-	SuperPixel* current;
+
+	SuperPixel* current = NULL;
 	current = head->GetNext();
 	while (current != NULL)
 	{
@@ -2098,6 +2115,7 @@ Color SuperPixel::SetAveColor(ImageData* image)
 		}
 	}
 	AveError = AveError / (float)(count);
+	size = count;
 	return AveColor;
 }
 

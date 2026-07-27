@@ -37,7 +37,52 @@ __global__ void test_int_column(int* matrix, int w, int h, int column, int value
 __global__ void test_Bool_Array(bool* array, int w, int h, bool* result);
 __global__ void min_UChar_Array(unsigned char* array, int N, unsigned char* out_value);
 __global__ void min_UChar_Array_portion(unsigned char* array, int width, int height, int x_offset, int y_offset, int target_width, int target_height, unsigned char* out_value);
+__global__ void max_Int_Array(int* array, int width, int height, int* max_array);
 
+__device__ __forceinline__ void min_uChar_Array_portion_main(unsigned char* array, int width, int x_offset, int y_offset, int target_width, int target_height, unsigned char* min_array, int* mask, int mask_identifier)
+{
+	// Re-usable main kernel for min_UChar_Array_portion function.
+	// Stores minimum value in min_array[0].
+	// This version of the kernel uses a mask value to define which locations contribute to the minimum value.
+
+#if defined(__CUDA_ARCH__)
+	bool ignore_mask = (NULL == mask) || (mask_identifier < 1);
+
+	int N_portion = target_width * target_height; // Number of elements in the target portion of the array.
+
+	int idx = threadIdx.x;
+	min_array[idx] = 255; // Maximum value for unsigned char.
+	for (int i = idx; i < N_portion; i += threads_per_block) // Striding through portion of the array.
+	{
+		int portion_x = i % target_width; // x value within window of the target region.
+		int portion_y = i / target_width; // y value within window of the target region.
+		int x = x_offset + portion_x; // Overall x value.
+		int y = y_offset + portion_y; // Overall y value.
+		int pos = x + y * width; // Position of the element within the full array.
+		if ((array[pos] < min_array[idx]) && (ignore_mask || (mask_identifier == mask[pos])))
+		{
+			min_array[idx] = array[pos];
+		}
+	}
+	__syncthreads(); // Wait for all threads to finish.
+
+	// Reduce the thread_min array to one element.  Don't assume that threads_per_block is a power of two (although it almost always is).
+	unsigned int working_set = threads_per_block;
+	while (working_set > 1)
+	{
+		int half_ceiling = (working_set + 1) / 2; // Handle case where working_set is odd.
+		if ((idx < half_ceiling) && (idx + half_ceiling < working_set))
+		{
+			if (min_array[idx + half_ceiling] < min_array[idx])
+			{
+				min_array[idx] = min_array[idx + half_ceiling];
+			}
+		}
+		working_set = half_ceiling;
+		__syncthreads(); // Each pass through the reduction process needs to wait for all threads to complete.
+	}
+#endif
+}
 
 class SparseFloatMatrix
 {

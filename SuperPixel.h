@@ -11,6 +11,9 @@
 #include <set>
 #include <sstream>
 #include <algorithm>
+#ifdef USE_CUDA
+#include "Cuda_Image_Art\Watershed_CUDA.cuh"
+#endif
 
 class Path;
 class WorkSpace;
@@ -89,6 +92,7 @@ public:
 	GradData* GetGradient();
 	SuperPixel* GetHead();
 	int GetIdentifier();
+	int GetMaxIdentifier();
 	std::set<int>* GetNeighbors();
 	SuperPixel* GetNext();
 	Path* GetPathHead();
