@@ -35,7 +35,7 @@
 #define SEEDS_OUT false;
 #define CLOSE_FIRST false;
 #define TEST_FILE "test.jpg"
-#define CONFIG_FILE "Image_Art\\config.txt"
+#define CONFIG_FILE "config.txt"
 #define MAX_INPUTS 50
 // File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint
 #ifdef USE_CUDA 
@@ -148,33 +148,54 @@ int main(int argc, char** argv)
 				index++;
 				max_args++;
 			}
-
 		}
-		//TODO: go get config file arguments
+		//get config file arguments
+		//Note: incorrectly formatted arguments (ex: "tagvalue") will be added and caught later on
    		std::fstream configfile(configname, std::fstream::in);
 		if (!configfile.is_open()){
         	std::cout << "Config file not found\n";
     	} else {
         	while (getline(configfile, value)) {
-            	commandlineinputs.push_front(value);
-            	max_args++;
-        	}
-        	configfile.close();
+				int equal_loc = value.find("=");
+				int space_loc = value.find(" ");
+				if (equal_loc == std::string::npos && space_loc != std::string::npos){//If there is no equals but at least one space
+					value[space_loc] = '='; //set the first space to an equals
+					space_loc = value.find(" "); //re-search for whitespace
+				}
+				if (space_loc == std::string::npos){//if there are no spaces, add to argument list
+					commandlineinputs.push_front(value);
+            		max_args++;
+				}else {//if the string contains spaces, strip whitespace
+					tag = "";
+					for (int i = 0; value[i] != '\0'; i++){
+						if (value[i] != ' '){
+							tag.push_back(value[i]);
+						}
+					}
+					commandlineinputs.push_front(tag);
+            		max_args++;
+				}
+			}
+        configfile.close();
     	}
-		//TODO: Somehow add command line arguments and config file arguments to the same list, with command line arguments coming last
 		argument = 0;
-		while (argument < max_args) 
+		while (argument < max_args)
 		{
-			std::string input = commandlineinputs.front(); //change to check config file arguments first
+			std::string input = commandlineinputs.front(); //config file arguments are first so that command line arguments can overwrite them
 			commandlineinputs.pop_front();
 			int equal_loc = input.find("=");
-			if (equal_loc != std::string::npos) //they should have all been formatted this way
+			if ((equal_loc < (std::string::npos - 1)) && (equal_loc > 0)) //they should have all been formatted like "tag=value"
 			{
 				tag = input.substr(0, equal_loc);
 				value = input.substr(equal_loc + 1, input.length() - equal_loc - 1);
+				if (tag.empty() || value.empty()) {
+					std::cout << "Incorrectly formatted input: " << input << ", ignoring.\n";
+					argument++;
+					continue;
+				}
 			}
 			else {
-				//Incorrectly fomatted argument
+				//Incorrectly fomatted argument -- can happen if a config file input is formatted weirdly (ex: "tagvalue")
 				std::cout << "Incorrectly formatted input: " << input << ", ignoring.\n";
 				argument++;
 				continue;
