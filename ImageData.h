@@ -51,6 +51,7 @@ public:
 	bool SetBackground(Color c);
 	bool write_file(std::string filename);
 #ifdef USE_CUDA
+	unsigned char* GetCData();
 	bool ProcessWatercolor();
 	bool RenderWatercolor();
 	Paper* GetPaper();

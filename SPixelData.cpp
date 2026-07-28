@@ -177,10 +177,11 @@ bool SPixelData::Reset()
 		throw std::runtime_error("Failed to reset c_device_data in Reset.\n");
 	}
 	//c_device_data = IntArray(width, height, false);
-	if (!CopyFromHost(data, max_pos, c_device_data))
-	{
-		throw std::runtime_error("Failed to copy SPixelData to c_device_data in Reset.\n");
-	}
+	// Following lines are redundant, I think.  Removed for now.
+	//if (!CopyFromHost(data, max_pos, c_device_data))
+	//{
+	//	throw std::runtime_error("Failed to copy SPixelData to c_device_data in Reset.\n");
+	//}
 #endif
 	meeting_points.clear();
 	return true;

@@ -17,9 +17,10 @@ ImageData::ImageData(unsigned char* data_in, int w, int h, int n, bool frac_valu
 	colorchannels = n;
 	brush = NULL;
 	// Start with white background color.
-	background_color.channel[0] = 255;
-	background_color.channel[1] = 255;
-	background_color.channel[2] = 255;
+	for (int i = 0; i < colorchannels; ++i)
+	{
+		background_color.channel[i] = 255;
+	}
 
 	data = (unsigned char*)malloc(sizeof(unsigned char) * width * height * colorchannels);
 	if (NULL == data)
@@ -365,6 +366,11 @@ bool ImageData::write_file(std::string filename)
 }
 
 #ifdef USE_CUDA
+unsigned char* ImageData::GetCData()
+{
+	return c_device_data;
+}
+
 bool ImageData::ProcessWatercolor()
 {
 	bool ret = true;

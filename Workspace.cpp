@@ -484,7 +484,7 @@ bool WorkSpace::InitialSuperPixels(std::string seeds)
 		std::cout << "\nFinding initial seeds ";
 #ifdef USE_CUDA
 		std::vector <PointPair> seed_list;
-		seed_list = c_find_seeds(width, height, edge, pixeldata, list_head, xdiv, ydiv, 2);
+		seed_list = c_find_seeds(width, height, edge, pixeldata, xdiv, ydiv, 2);
 		std::vector<PointPair>::iterator it;
 		for (it = seed_list.begin(); it != seed_list.end(); ++it)
 		{
@@ -1136,11 +1136,24 @@ bool WorkSpace::SplitSuperPixels(float num_sigmas)
 	float limit = overall_ave_error + (num_sigmas * sigma);
 	//std::cout << "Error: " << overall_ave_error << ", " << sigma << ", " << limit << "\n";
 	std::cout << ".";
+#ifdef USE_CUDA
+	if (!list_head->GetPixelData()->SyncToDevice())
+	{
+		throw std::runtime_error("Failed to sync pixeldata to the CUDA device.\n");
+		return false;
+	}
+	std::vector<int>split_identifiers; // Will hold the identifiers of superpixels to be split.
+	split_identifiers.clear();
+#endif
+
 	current = list_head;
 	while (NULL != current)
 	{
 		if (current->GetAveError() > limit)
 		{
+#ifdef USE_CUDA
+			split_identifiers.push_back(current->GetIdentifier()); // We only use this loop to collect the idenfifiers.
+#else
 			PointPair Add_Seed = current->Split(image);
 			//std::cout << current->GetIdentifier() << ", " << Add_Seed.x << ", " << Add_Seed.y << "\n";
 			std::cout << ".";
@@ -1150,9 +1163,26 @@ bool WorkSpace::SplitSuperPixels(float num_sigmas)
 				list_tail = new SuperPixel(Add_Id, edge, pixeldata, Add_Seed, NULL, current->GetTail(), this, SPType_Plain);
 				InsertSPIntoIndex(list_tail);
 			}
+#endif
 		}
 		current = current->GetNext();
 	}
+#ifdef USE_CUDA
+	std::vector<PointPair> add_seeds = c_split_seeds(list_head, split_identifiers, image);
+	current = list_head->GetTail();
+	for (std::vector<PointPair>::iterator it = add_seeds.begin(); it < add_seeds.end(); ++it)
+	{
+		PointPair Add_Seed = *it;
+		std::cout << ".";
+		if ((Add_Seed.x >= 0) || (Add_Seed.y >= 0))
+		{
+			int Add_Id = 1 + list_head->GetMaxIdentifier();
+			list_tail = new SuperPixel(Add_Id, edge, pixeldata, Add_Seed, NULL, current->GetTail(), this, SPType_Plain);
+			InsertSPIntoIndex(list_tail);
+		}
+	}
+
+#endif
 	return true;
 }
 
@@ -2352,7 +2382,7 @@ bool WriteOutHostIntArray(int* source, int x, int y, std::string name, int min, 
 		}
 		if (0 == stbi_write_png(name.c_str(), x, y, 3, data, x * 3))
 		{
-			throw std::runtime_error("Unable to write out matrix image in WriteOutIntArray.\n");
+			throw std::runtime_error("Unable to write out matrix image in WriteOutHostIntArray.\n");
 			ret = false;
 		}
 		free(data);
