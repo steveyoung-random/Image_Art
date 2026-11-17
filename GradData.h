@@ -8,6 +8,7 @@
 #include "stb_image.h"
 #include <sstream>
 #include <string>
+#include <vector>
 #ifdef USE_CUDA
 #include "Cuda_Image_Art\Image_CUDA.cuh"
 #endif
@@ -32,11 +33,13 @@ public:
 	int GetWidth();
 	int GetHeight();
 	bool write_file(std::string filename);
-	GradData* gen_dilate_erode(bool dilate, int mode, int struct_size);
+	//TODO: need to change this to accomodate custom dilation/erosion shapes
+	GradData* gen_dilate_erode(bool dilate, int mode, int struct_size, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	GradData* gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst);
 	ImageData* Gradient2Image(int mode);
-	GradData* Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize);
-	GradData* Generate_Gradient(int mode = 0, int struct_size = 3, int xd = 100, int yd = 100, float konst = 0);
+	//TODO: need to change this to accomodate custom dilation/erosion shapes
+	GradData* Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize, int custom_modes = 0, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
+	GradData* Generate_Gradient(int mode = 0, int struct_size = 3, int xd = 100, int yd = 100, float konst = 0, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	unsigned char* GetData(); // Return data, the non-CUDA data for this object.
 #ifdef USE_CUDA
 	unsigned char* GetCData(); // Return the CUDA device version of the data for this object.

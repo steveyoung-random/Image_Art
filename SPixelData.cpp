@@ -520,7 +520,7 @@ bool SPixelData::dilate(SuperPixel* sp, int mode, int struct_size)
 bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struct_size)
 {
 
-	// Mode: 0=square, 1=disc
+	// Mode: 0=square, 1=disc, >1 = custom
 	// Struct_size: Width/Height, or Diameter
 	bool ret = false;
 	if (sp == NULL)
@@ -823,6 +823,11 @@ bool SPixelData::dilate_erode(SuperPixel* sp, bool isdilate, int mode, int struc
 					}
 				}
 			}
+		} else if (mode > 1){
+			//handle custom structuring element code here
+			//TODO: update to work with custom structuring element
+			throw(std::runtime_error("Postprocessing cannot currently use a custom structuring element.\n"));
+			return false;
 		}
 		current = current->GetNext();
 	}

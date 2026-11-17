@@ -311,7 +311,7 @@ __global__ void find_initial_cell_regions(int width, int height, int xdiv, int y
 
 	if ((x_offset < width) && (y_offset < height) && (x_offset >= 0) && (y_offset >= 0)) // Do basic dimension testing.
 	{
-		int N = width * height;
+		int N = width * height; //TODO: Declared but never used. Delete?
 		// Adjust portion dimensions if necessary.
 		if (x_offset + cell_width > width)
 		{

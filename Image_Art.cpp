@@ -7,6 +7,8 @@
 #include <list>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <array>
 
 #define PREWINDOW 3
 #define POSTWINDOW 0
@@ -36,6 +38,7 @@
 #define CLOSE_FIRST false;
 #define TEST_FILE "test.jpg"
 #define CONFIG_FILE "config.txt"
+#define SHAPE_FILE "shape.txt" //used to define a custom structuring element
 #define MAX_INPUTS 50
 // File outputs: 1: gray+edge+skeleton+paintpath, 2: base PNG, 4: base SVG, 8: post PNG, 16: post SVG, 32: paint
 #ifdef USE_CUDA 
@@ -91,14 +94,18 @@ int main(int argc, char** argv)
 		std::string filename = "";
 		std::string newname = "";
 		std::string configname = "";
+		std::string shapefile = "";
 #ifdef TEST
 		filename = TEST_FILE;
 		path = PATH;
 		newname = OUTPUT;
 		configname = CONFIG_FILE;
+		shapefile = SHAPE_FILE;
 #endif // TEST
 		std::string tag;
 		std::string value;
+		std::vector<unsigned short> custom_struct; //A vector that holds the coordinates of each pixel to check
+		int custom_struct_size = 0;
 
 		int argument = 1;
 		int index = 0; 
@@ -234,6 +241,10 @@ int main(int argc, char** argv)
 			else if (tag == "contrast")
 			{
 				contrast_radius = atoi(value.c_str());
+			}
+			else if ((tag == "custom") || (tag == "struct") || (tag == "shape"))
+			{
+				shapefile = value.c_str();
 			}
 			else if ((tag == "dilate") || (tag == "predilate") || (tag == "pre_dilate") || (tag == "pre-dilate"))
 			{
@@ -548,6 +559,56 @@ int main(int argc, char** argv)
 			postproc_windowsize = 0;
 			postgap = 0;
 		}
+		//If the value given for any structuring element shape is not 0 or 1, then look for a custom one
+		//TODO: update vector to have one unsigned short. OR signed? Need to examine CUDA code to determine which works better
+		if ((pre_dilate_shape > 1) || (pre_erode_shape > 1) || (post_dilate_shape > 1) || (post_erode_shape > 1))
+		{
+			std::fstream custom(shapefile, std::fstream::in);
+			int is_even = 0; //0 if odd, 1 if even. Integer instead of bool so can add/subtract with it
+			if (!custom.is_open()){
+				std::cout << "Custom structuring element file not found\n";
+				exit(1);
+			} else {
+				if (getline(custom, value)){
+					custom_struct_size = atoi(value.c_str());
+					//If the given size is even, pretends there is an extra column and row of 0s to the right and bottom so a center point can be found
+					if ((custom_struct_size % 2) == 0){
+						custom_struct_size += 1;
+						is_even = 1;
+					}
+				} else {
+					std::cout << "Issue reading custom structuring element data\n";
+					exit(1);
+				}
+				char val;
+				for (int a = 0; a < (custom_struct_size - is_even); a++) { //loop through all the rows
+					if (getline(custom, value)){
+						for (int i = 0; i < (custom_struct_size - is_even); i++){ //loop through all the values in each row
+							if (i < value.length()){
+								val = value.at(i);	
+							} else {
+								val = '0';
+							}
+							if (val == '1'){
+								unsigned short struct_index;
+								struct_index = (a*custom_struct_size)+i;
+								custom_struct.push_back(struct_index);
+							}
+						}
+					}
+				 	else {
+						std::cout << "Issue reading custom structuring element data\n";
+						exit(1);
+					}
+				}
+				custom_struct.shrink_to_fit();
+				custom.close();
+			}
+			if (custom_struct.size() < 1) {
+				std::cout << "Custom structuring element is empty\n";
+				exit(1);
+			}
+		}
 		std::cout << "Filename: " << filename << "\n";
 		std::cout << "Show Grayscales: " << show_grays << " Show Edges: " << show_edges << "\n";
 		std::cout << "SPFile: " << spfile << " Gray file: " << grayfile << " Edge file: " << edgefile << "\n";
@@ -776,6 +837,7 @@ int main(int argc, char** argv)
 			std::cout << ".";
 			int steps;
 			int modes = 0;
+			int custom_modes = 0; //TODO: there is probably a way to combine this into modes, but I don't know enough about how modes works
 
 			if (close_first)
 			{
@@ -784,15 +846,22 @@ int main(int argc, char** argv)
 			else {
 				steps = 9;
 			}
-			if (pre_erode_shape)
+			if (pre_erode_shape == 1)
 			{
 				modes += steps;
 			}
-			if (pre_dilate_shape)
+			if (pre_dilate_shape == 1)
 			{
 				modes += (15 - steps);
 			}
-
+			if (pre_erode_shape > 1)
+			{
+				custom_modes += 1;
+			}
+			if (pre_dilate_shape > 1)
+			{
+				custom_modes += 2;
+			}
 			int w_size;
 			if (preproc_windowsize < 13)
 			{
@@ -800,9 +869,12 @@ int main(int argc, char** argv)
 			}
 			for (w_size = 3; w_size <= preproc_windowsize; w_size += (int)(((preproc_windowsize - 3) / 5)))
 			{
-				preprocessed_gray = gray->Preprocess_Gray(4, steps, modes, w_size);
+				preprocessed_gray = gray->Preprocess_Gray(4, steps, modes, w_size, custom_modes, custom_struct, custom_struct_size);
+				std::cout<<"Finished Preprocess_Gray\n";//TODO: remove
 				edge = preprocessed_gray->Generate_Gradient(1, gradthickness, xdiv, ydiv, k);
+				std::cout<<"Finished Generate_Gradient\n";
 				gray_image = edge->Gradient2Image(0);
+				std::cout<<"Gradient2Image\n";
 				temppath = path;
 				temppath.append(newname).append("_edge_").append(std::to_string(w_size));
 				gray_image->write_file(temppath);
@@ -871,10 +943,12 @@ int main(int argc, char** argv)
 			}
 			if (postproc_windowsize > 0)
 			{
+			//TODO: need to look at this to accomodate custom dilation/erosion shapes
+			//the function expects the possibility of multiple steps and bit-packed information but it's never used that way
 				std::cout << "\nStart postprocessing ";
-				workspace->Postprocess_SuperPixels(1, 1, post_erode_shape, postproc_windowsize);
+				workspace->Postprocess_SuperPixels(1, 1, post_erode_shape, postproc_windowsize, custom_struct, custom_struct_size);
 				std::cout << ".";
-				workspace->Postprocess_SuperPixels(1, 0, post_dilate_shape, (postproc_windowsize - postgap));
+				workspace->Postprocess_SuperPixels(1, 0, post_dilate_shape, (postproc_windowsize - postgap), custom_struct, custom_struct_size);
 				std::cout << ".";
 				workspace->FindPaths(1, polygon, fine);
 				std::cout << ".";
@@ -977,7 +1051,8 @@ int main(int argc, char** argv)
 			}
 			int steps;
 			int modes = 0;
-
+			int custom_modes = 0;
+			//TODO: need to change this to accomodate custom dilation/erosion shapes
 			if (close_first)
 			{
 				steps = 6;
@@ -985,16 +1060,24 @@ int main(int argc, char** argv)
 			else {
 				steps = 9;
 			}
-			if (pre_erode_shape)
+			if (pre_erode_shape == 1)
 			{
 				modes += steps;
 			}
-			if (pre_dilate_shape)
+			if (pre_dilate_shape == 1)
 			{
 				modes += (15 - steps);
 			}
+			if (pre_erode_shape > 1)
+			{
+				custom_modes += 1;
+			}
+			if (pre_dilate_shape > 1)
+			{
+				custom_modes += 2;
+			}
 
-			workspace->Preprocess_Gray(4, steps, modes, preproc_windowsize);
+			workspace->Preprocess_Gray(4, steps, modes, preproc_windowsize, custom_modes, custom_struct, custom_struct_size);
 			std::cout << ".";
 			workspace->Generate_Gradient(1, gradthickness, xdiv, ydiv, k);
 			std::cout << ".";
@@ -1071,10 +1154,12 @@ int main(int argc, char** argv)
 					}
 					if (postproc_windowsize > 0)
 					{
+					//TODO: need to look at this to accomodate custom dilation/erosion shapes
+					//the function expects the possibility of multiple steps and bit-packed information but it's never used that way
 						std::cout << "\nStart postprocessing ";
-						workspace->Postprocess_SuperPixels(1, 1, post_erode_shape, postproc_windowsize);
+						workspace->Postprocess_SuperPixels(1, 1, post_erode_shape, postproc_windowsize, custom_struct, custom_struct_size);
 						std::cout << ".";
-						workspace->Postprocess_SuperPixels(1, 0, post_dilate_shape, (postproc_windowsize - postgap));
+						workspace->Postprocess_SuperPixels(1, 0, post_dilate_shape, (postproc_windowsize - postgap), custom_struct, custom_struct_size);
 						std::cout << ".";
 						workspace->FindPaths(1, polygon, fine);
 						std::cout << ".";

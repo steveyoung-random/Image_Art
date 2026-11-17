@@ -22,9 +22,9 @@ GradData* WorkSpace::gen_gray(ImageData* image, int channel, int nchannel)
 }
 
 
-GradData* WorkSpace::gen_dilate_erode(GradData* gray, bool isdilate, int mode, int struct_size)
+GradData* WorkSpace::gen_dilate_erode(GradData* gray, bool isdilate, int mode, int struct_size, std::vector<unsigned short> custom_struct, int custom_struct_size)
 {
-	return gray->gen_dilate_erode(isdilate, mode, struct_size);
+	return gray->gen_dilate_erode(isdilate, mode, struct_size, custom_struct, custom_struct_size);
 }
 
 GradData* WorkSpace::gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst)
@@ -401,13 +401,13 @@ bool WorkSpace::write_file(std::string filename)
 	return false;
 }
 
-bool WorkSpace::Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize)
+bool WorkSpace::Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize, int custom_modes, std::vector<unsigned short> custom_struct, int custom_struct_size)
 {
-	processed_gray = gray->Preprocess_Gray(num_steps, steps, modes, structsize);
+	processed_gray = gray->Preprocess_Gray(num_steps, steps, modes, structsize, custom_modes, custom_struct, custom_struct_size);
 	return true;
 }
 
-bool WorkSpace::Generate_Gradient(int mode, int struct_size, int xd, int yd, float konst)
+bool WorkSpace::Generate_Gradient(int mode, int struct_size, int xd, int yd, float konst, std::vector<unsigned short> custom_struct, int custom_struct_size)
 {
 	xdiv = xd;
 	ydiv = yd;
@@ -416,13 +416,13 @@ bool WorkSpace::Generate_Gradient(int mode, int struct_size, int xd, int yd, flo
 	{
 		delete(dilate);
 	}
-	dilate = processed_gray->gen_dilate_erode(true, mode, struct_size);
+	dilate = processed_gray->gen_dilate_erode(true, mode, struct_size, custom_struct, custom_struct_size);
 
 	if (NULL != erode)
 	{
 		delete(erode);
 	}
-	erode = processed_gray->gen_dilate_erode(false, mode, struct_size);
+	erode = processed_gray->gen_dilate_erode(false, mode, struct_size, custom_struct, custom_struct_size);
 
 	if (NULL != edge)
 	{
@@ -660,15 +660,56 @@ bool WorkSpace::CombineSuperPixels(float colormatch)
 	}
 	return true;
 }
-
-bool WorkSpace::Postprocess_SuperPixels(int num_steps, unsigned char steps, unsigned char modes, int structsize)
+//TODO: this is only ever called with one step??? I need to update this to allow custom structuring elements but idk if I should be trying to bit-pack anything
+//currently a large part of this function's capabilities are never used
+bool WorkSpace::Postprocess_SuperPixels(int num_steps, unsigned char steps, unsigned char mode, int structsize, std::vector<unsigned short> custom_struct, int custom_struct_size)
 {
 	// num_steps - how many steps in the processing (0 to 7)
 	// windowsize - the size of the structuring elements used in processing.
 	// steps - each bit (starting at 0 and going to 7) is 1 for erosion, 0 for dilation
 	// modes - each bit (starting at 0 and going to 7) is 1 for disc, 0 for square
 	// 
+	// As is, num_steps is always 1, and steps is either 1 or 0, with 1 for erosion and 0 for dilation
+	SuperPixel* processed_current = NULL;
+	if (NULL == processed_pixeldata)
+	{
+		processed_pixeldata = new SPixelData(*pixeldata);
+	}
+	if (NULL == processed_head)
+	{
+		current = list_head;
+		processed_current = new SuperPixel(*current, edge, processed_pixeldata, NULL, NULL, this, SPType_Processed);
+		processed_head = processed_current;
+		while (NULL != current->GetNext())
+		{
+			current = current->GetNext();
+			processed_current = new SuperPixel(*current, edge, processed_pixeldata, NULL, processed_current, this, SPType_Processed);
+		}
+		processed_tail = processed_head->GetTail();
+	}
 
+	if (mode > 1)
+	{
+		structsize = custom_struct_size; //if doing a custom structuring element, need to use the size for it
+		//TODO: Implement custom structuring element handling for this
+		throw std::runtime_error("Cannot currently postprocess with a custom structuring element.\n");
+	}
+	if (steps)  // True if erode
+	{
+		if (false == processed_pixeldata->dilate_erode(processed_head, false, mode, structsize))
+		{
+			throw std::runtime_error("Error eroding SuperPixels.\n");
+		}
+	}
+	else {  // Otherwise, dilate
+		if (false == processed_pixeldata->dilate_erode(processed_head, true, mode, structsize))
+		{
+			throw std::runtime_error("Error dilating SuperPixels.\n");
+		}
+	}
+	return true;
+
+	/* Old code - expects bit packed data
 	if (0 == num_steps)
 	{
 		return true;
@@ -716,6 +757,7 @@ bool WorkSpace::Postprocess_SuperPixels(int num_steps, unsigned char steps, unsi
 		}
 	}
 	return true;
+	*/
 }
 
 bool WorkSpace::WriteSeeds(std::string filename)

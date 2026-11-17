@@ -82,12 +82,12 @@ public:
 	~WorkSpace();
 	bool Reset();
 	bool write_file(std::string filename);
-	bool Generate_Gradient(int mode = 0, int struct_size = 3, int xd = 100, int yd = 100, float konst = 0);
+	bool Generate_Gradient(int mode = 0, int struct_size = 3, int xd = 100, int yd = 100, float konst = 0, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	bool InitialSuperPixels(std::string seeds = "");
 	bool Watershed();
 	bool SetAveColors();
 	bool CombineSuperPixels(float colormatch);
-	bool Postprocess_SuperPixels(int num_steps, unsigned char steps, unsigned char modes, int structsize);
+	bool Postprocess_SuperPixels(int num_steps, unsigned char steps, unsigned char modes, int structsize, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	bool WriteSeeds(std::string filename);
 	bool WriteSuperPixelCSV(std::string filename);
 	bool WriteSuperPixels(std::string filename);
@@ -128,9 +128,9 @@ public:
 	GradData* gen_diff(ImageData* image1, ImageData* image2);
 
 	// Pass through to GradData class.
-	GradData* gen_dilate_erode(GradData* gray, bool dilate, int mode, int struct_size);
+	GradData* gen_dilate_erode(GradData* gray, bool dilate, int mode, int struct_size, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	GradData* gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst);
-	bool Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize);
+	bool Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize, int custom_modes = 0, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 };
 
 // For host-arrays.

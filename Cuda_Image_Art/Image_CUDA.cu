@@ -210,7 +210,7 @@ __global__ void process_dilate_erode_rect_2(int x, int y, unsigned char* input, 
 		histogram[i] = 0;
 	}
 
-	for (int img_y = 0; img_y <= struct_extent; ++img_y)  // wy is the y value in data_window.
+	for (int img_y = 0; img_y <= struct_extent; ++img_y)  // wy is the y value in data_window. TODO: where is this wy you speak of?
 	{
 		// Stride across data_window, with w_x being the x location within the window.
 		for (int w_x = threadIdx.x; w_x < data_window_width; w_x += blockDim.x)
@@ -436,6 +436,104 @@ __global__ void process_dilate_erode_disc(int x, int y, unsigned char* input, un
 		}
 	}
 }
+
+__global__ void process_dilate_erode_custom(int x, int y, unsigned char* input, unsigned char* output, bool isdilate, int struct_size, unsigned short* d_struct_data, int struct_length) {
+    /* This function is used when a custom structuring element is given
+    * This kernel takes in:
+    * x, y - image width and height
+    * input - image data in row-major format, one unsigned char per pixel.
+    * output - image data for the transformed image, after undergoing dilation or erosion.
+    * isdilate - true for dilation, false for erosion.
+	* d_struct_data - pointer to pinned data with all the coordinates of the custom structuring element.
+    * struct_size - number of coordinates in d_struct_data.
+	* struct_length - horizontal and vertical size of the initial structuring element array.
+    *
+    */
+    //For now, I'm not using shared memory. I may start using a rolling window at some point but not yet
+    //int data_window_width = blockDim.x + struct_length - 1; // Width of data_window;
+    int struct_extent = (struct_size - 1) / 2; // How far the struct goes in each direction beyond the base location.
+    //extern __shared__ unsigned char data_window[]; // Two rows of the rolling window of shared data for calculations. 0 for removal, 1 for adding.
+	int x_offset = blockIdx.x * blockDim.x;
+    int img_x = x_offset + threadIdx.x; // coordinate location within image.
+    //int wx = threadIdx.x + struct_extent; // X location within data window.
+    int extreme = 256; //will hold the local min or max
+	int struct_x;
+	int struct_y;
+    
+    //iterate through d_struct_data, using the numbers within as offsets and storing the local min/max among them
+    //be careful not to go out of bounds
+    //update output
+
+	//if doing data window, add stuff here
+	
+	// Write value for img_y=0.
+	if ((img_x >= 0) && (img_x < x))
+	{
+		if (isdilate)
+		{
+			extreme = -1;
+			// Look for maximum value.
+			for (int i = 0; i < struct_length; i++) // look through struct to check nearby values
+			{
+				struct_x = img_x+((d_struct_data[i]%struct_size)-struct_extent); //x coordinate plus the struct offset
+				struct_y = ((d_struct_data[i]/struct_size)-struct_extent); //just the offset since image y = 0 here
+				if ((struct_x < x) && (struct_x >= 0) && (struct_y >= 0) && (struct_y < y)){ //gotta check bounds
+					if (input[struct_x + (struct_y * x)] > extreme){
+						extreme = input[struct_x + (struct_y * x)];
+					}
+				}
+			}
+		} else {
+			// Look for minimum value
+			for (int i = 0; i < struct_length; i++) // look through struct to check nearby values
+			{
+				struct_x = img_x+((d_struct_data[i]%struct_size)-struct_extent); //x coordinate plus the struct offset
+				struct_y = ((d_struct_data[i]/struct_size)-struct_extent); //just the offset since image y = 0 here
+				if ((struct_x < x) && (struct_x >= 0) && (struct_y >= 0) && (struct_y < y)){ //gotta check bounds
+					if (input[struct_x + (struct_y * x)] < extreme){
+						extreme = input[struct_x + (struct_y * x)];
+					}
+				}
+			}
+		}
+		output[img_x] = extreme; //assign new value
+	} else { //If the column is not within bounds, no need to make changes. This may not apply if a shared data window is added
+		return;
+	}
+	// Begin marching forward with larger values
+	for (int img_y = 1; img_y < y; ++img_y)
+	{
+		if (isdilate)
+		{
+			extreme = -1;
+			// Look for maximum value.
+			for (int i = 0; i < struct_length; i++) // look through struct to check nearby values
+			{
+				struct_x = img_x+((d_struct_data[i]%struct_size)-struct_extent); //x coordinate plus the struct offset
+				struct_y = img_y+((d_struct_data[i]/struct_size)-struct_extent); //y coordinate plus struct offset
+				if ((struct_x < x) && (struct_x >= 0) && (struct_y >= 0) && (struct_y < y)){ //gotta check bounds
+					if (input[struct_x + (struct_y * x)] > extreme){
+						extreme = input[struct_x + (struct_y * x)];
+					}
+				}
+			}
+		} else {
+			extreme = 256;
+			// Look for minimum value
+			for (int i = 0; i < struct_length; i++) // look through struct to check nearby values
+			{
+				struct_x = img_x+((d_struct_data[i]%struct_size)-struct_extent); //x coordinate plus the struct offset
+				struct_y = img_y+((d_struct_data[i]/struct_size)-struct_extent); //y coordinate plus struct offset
+				if ((struct_x < x) && (struct_x >= 0) && (struct_y >= 0) && (struct_y < y)){ //gotta check bounds
+					if (input[struct_x + (struct_y * x)] < extreme){
+						extreme = input[struct_x + (struct_y * x)];
+					}
+				}
+			}
+		}
+		output[img_x + img_y * x] = extreme; //assign new value
+	}
+}
 __global__ void process_gen_grayscale(unsigned char* c_device_data_input, int N, unsigned char* c_device_data_output)
 {
 	// Generic grayscale calculation for 3 channel data.
@@ -472,12 +570,14 @@ __global__ void process_gen_grayscale_c_nc(unsigned char* c_device_data_input, i
 	}
 }
 
-
-unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdilate, int mode, int struct_size) {
+//TODO: need to change this to accomodate custom dilation/erosion shapes
+// figure out data handling for CUDA bc can't bring vector in here -- copy over before passing to this function
+unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdilate, int mode, int struct_size, unsigned short* custom_data, int struct_length) {
 	// CUDA function to dilate or erode an image with dimensions x and y.
 	// isdilate is true if this is dilation, false if this is erosion.
-	// mode is 0 if the structuring element is rectangular, and 1 if it is a disc.
+	// mode is 0 if the structuring element is rectangular, 1 if it is a disc, and 3 if a custom structuring element is to be used.
 	// struct_size is the vertical and horizontal size of the structuring element (non-square sizes are not supported).
+	// struct_length holds the number of values in the custom structuring element
 	// The host version of the input data is h_in, the device version is d_in.
 	// The host version of the output data is h_out, the device version is d_out.
 
@@ -505,7 +605,9 @@ unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdila
 	//}
 
 	int struct_extents = (struct_size - 1) / 2; // This if the extent to which the structuring element extends beyond the origin in each direction.
-	struct_size = 1 + 2 * struct_extents; // Adjusting as needed if struct size is even.
+	if (mode < 3) {
+		struct_size = 1 + 2 * struct_extents; // Adjusting as needed if struct size is even.
+	}
 	int blocks_per_grid = (x + threads_per_block - 1) / threads_per_block;
 	if (0 == mode)
 	{
@@ -530,6 +632,36 @@ unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdila
 			throw std::runtime_error("Failed to process in process_dilate_erode_disc.\n");
 			return NULL;
 		}
+	}
+	
+	else if (3 == mode)
+	{
+
+		unsigned short* d_struct_data = NULL; //make a copy of the structuring element info on the device
+		cudaStatus = cudaMalloc(&d_struct_data, (sizeof(unsigned short)*struct_length));
+		if (cudaStatus != cudaSuccess)
+		{
+			throw std::runtime_error("Failed to allocate memory for d_struct_data in c_gen_dilate_erode.\n");
+			return NULL;
+		}
+		cudaMemcpy(d_struct_data, custom_data, (sizeof(unsigned short)*struct_length), cudaMemcpyHostToDevice);
+		//TODO: remove
+		//this is just some debugging stuff to check that the values were read in properly
+		for (int i = 0; i < struct_length; i++){
+			std::cout << "(" << ((custom_data[i]%struct_size)-struct_extents) << "," << ((custom_data[i]/struct_size)-struct_extents) << ")\n";
+		}
+		//int shared_size = 0; //not sure if shared memory helps here?
+		process_dilate_erode_custom << <blocks_per_grid, threads_per_block>> > (x, y, d_in, d_out, isdilate, struct_size, d_struct_data, struct_length);
+		cudaDeviceSynchronize();
+		std::cout << "Escaped from CUDA kernel!\n";//TODO: remove
+		//exit(0); //TODO: remove. This is for testing only
+		cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess)
+		{
+			throw std::runtime_error("Failed to process in process_dilate_erode_custom.\n");
+			return NULL;
+		}
+		cudaFree(d_struct_data);
 	}
 	if (false == CopyToHost(d_out, N, h_out))
 	{

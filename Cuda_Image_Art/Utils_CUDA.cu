@@ -311,7 +311,7 @@ __global__ void min_UChar_Array_portion(unsigned char* array, int width, int hei
 	int idx = threadIdx.x;
 	if ((0 == blockIdx.x) && (x_offset < width) && (y_offset < height) && (x_offset >= 0) && (y_offset >= 0)) // Only one block, and do basic dimension testing.
 	{
-		int N = width * height;
+		int N = width * height; //TODO: this is declared but never referenced. Delete?
 		// Adjust portion dimensions if necessary.
 		if (x_offset + target_width > width)
 		{
