@@ -1097,7 +1097,7 @@ int main(int argc, char** argv)
 					if (seeds_out)
 					{
 						temppath = path;
-						temppath.append("seeds.txt");
+						temppath.append(newname).append("seeds.txt");
 						workspace->WriteSeeds(temppath);
 						std::cout << ".";
 					}
@@ -1133,7 +1133,7 @@ int main(int argc, char** argv)
 					if (1 == (file_output & 1))
 					{
 						temppath = path;
-						temppath.append("SuperPixels_Paint_Paths.svg");
+						temppath.append(newname).append("SuperPixels_Paint_Paths.svg");
 						workspace->WritePaintCurvesSVG(temppath);
 						std::cout << ".";
 					}
@@ -1151,7 +1151,7 @@ int main(int argc, char** argv)
 						if (16 == (file_output & 16))
 						{
 							temppath = path;
-							temppath.append("SuperPixels_Post.svg");
+							temppath.append(newname).append("SuperPixels_Post.svg");
 							workspace->WriteSuperPixelsSVG(temppath, 1, polygon, fine, palette, contrast_radius);
 							std::cout << ".";
 						}
@@ -1169,7 +1169,7 @@ int main(int argc, char** argv)
 					{
 						std::cout << ".";
 						temppath = path;
-						temppath.append("SuperPixels.svg");
+						temppath.append(newname).append("SuperPixels.svg");
 						workspace->WriteSuperPixelsSVG(temppath, 0, polygon, fine, palette, contrast_radius);
 						std::cout << ".";
 					}
