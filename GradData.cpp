@@ -575,7 +575,6 @@ GradData* GradData::Preprocess_Gray(int num_steps, unsigned char steps, unsigned
 
 	for (int i = 0; i < num_steps; i++)
 	{
-		std::cout<<"Step " << (i+1) << " out of " << num_steps << "\n";//TODO: Remove
 		int mode = 0;
 		if (modes & (1 << i))
 		{

@@ -33,11 +33,9 @@ public:
 	int GetWidth();
 	int GetHeight();
 	bool write_file(std::string filename);
-	//TODO: need to change this to accomodate custom dilation/erosion shapes
 	GradData* gen_dilate_erode(bool dilate, int mode, int struct_size, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	GradData* gen_edge(GradData* dilate, GradData* erode, int xdiv, int ydiv, float konst);
 	ImageData* Gradient2Image(int mode);
-	//TODO: need to change this to accomodate custom dilation/erosion shapes
 	GradData* Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize, int custom_modes = 0, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	GradData* Generate_Gradient(int mode = 0, int struct_size = 3, int xd = 100, int yd = 100, float konst = 0, std::vector<unsigned short> custom_struct = {}, int custom_struct_size = 0);
 	unsigned char* GetData(); // Return data, the non-CUDA data for this object.

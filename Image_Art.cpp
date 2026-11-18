@@ -560,7 +560,6 @@ int main(int argc, char** argv)
 			postgap = 0;
 		}
 		//If the value given for any structuring element shape is not 0 or 1, then look for a custom one
-		//TODO: update vector to have one unsigned short. OR signed? Need to examine CUDA code to determine which works better
 		if ((pre_dilate_shape > 1) || (pre_erode_shape > 1) || (post_dilate_shape > 1) || (post_erode_shape > 1))
 		{
 			std::fstream custom(shapefile, std::fstream::in);
@@ -1049,7 +1048,7 @@ int main(int argc, char** argv)
 			int steps;
 			int modes = 0;
 			int custom_modes = 0;
-			//TODO: need to change this to accomodate custom dilation/erosion shapes
+			//TODO: handle modes bit-packing with custom struct info?
 			if (close_first)
 			{
 				steps = 6;

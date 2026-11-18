@@ -210,7 +210,7 @@ __global__ void process_dilate_erode_rect_2(int x, int y, unsigned char* input, 
 		histogram[i] = 0;
 	}
 
-	for (int img_y = 0; img_y <= struct_extent; ++img_y)  // wy is the y value in data_window. TODO: where is this wy you speak of?
+	for (int img_y = 0; img_y <= struct_extent; ++img_y)  // wy is the y value in data_window.
 	{
 		// Stride across data_window, with w_x being the x location within the window.
 		for (int w_x = threadIdx.x; w_x < data_window_width; w_x += blockDim.x)
@@ -570,8 +570,6 @@ __global__ void process_gen_grayscale_c_nc(unsigned char* c_device_data_input, i
 	}
 }
 
-//TODO: need to change this to accomodate custom dilation/erosion shapes
-// figure out data handling for CUDA bc can't bring vector in here -- copy over before passing to this function
 unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdilate, int mode, int struct_size, unsigned short* custom_data, int struct_length) {
 	// CUDA function to dilate or erode an image with dimensions x and y.
 	// isdilate is true if this is dilation, false if this is erosion.

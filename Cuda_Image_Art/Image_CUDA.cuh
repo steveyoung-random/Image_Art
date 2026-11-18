@@ -4,7 +4,6 @@
 // Licensed under the MIT License
 
 #include "Utils_CUDA.cuh"
-//TODO: need to change this to accomodate custom dilation/erosion shapes
 __global__ void process_dilate_erode_rect_1(int x, int y, unsigned char* input, unsigned char* output, bool isdilate, int struct_size);
 __global__ void process_dilate_erode_rect_2(int x, int y, unsigned char* input, unsigned char* output, bool isdilate, int struct_size);
 __global__ void process_dilate_erode_disc(int x, int y, unsigned char* input, unsigned char* output, bool isdilate, int struct_size);
