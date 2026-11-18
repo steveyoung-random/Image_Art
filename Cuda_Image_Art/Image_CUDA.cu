@@ -645,16 +645,13 @@ unsigned char* c_gen_dilate_erode(int x, int y, unsigned char* d_in, bool isdila
 			return NULL;
 		}
 		cudaMemcpy(d_struct_data, custom_data, (sizeof(unsigned short)*struct_length), cudaMemcpyHostToDevice);
-		//TODO: remove
 		//this is just some debugging stuff to check that the values were read in properly
-		for (int i = 0; i < struct_length; i++){
+		/*for (int i = 0; i < struct_length; i++){
 			std::cout << "(" << ((custom_data[i]%struct_size)-struct_extents) << "," << ((custom_data[i]/struct_size)-struct_extents) << ")\n";
-		}
+		}*/
 		//int shared_size = 0; //not sure if shared memory helps here?
 		process_dilate_erode_custom << <blocks_per_grid, threads_per_block>> > (x, y, d_in, d_out, isdilate, struct_size, d_struct_data, struct_length);
 		cudaDeviceSynchronize();
-		std::cout << "Escaped from CUDA kernel!\n";//TODO: remove
-		//exit(0); //TODO: remove. This is for testing only
 		cudaStatus = cudaGetLastError();
 		if (cudaStatus != cudaSuccess)
 		{

@@ -119,7 +119,6 @@ bool GradData::write_file(std::string filename)
 	return true;
 }
 
-//TODO: need to change this to accomodate custom dilation/erosion shapes
 //Perhaps for now only accomodate custom shapes in cuda and throw error if someone tries it without?
 // custom_struct_size holds N, where the custom structuring element was given in an N*N matrix
 // struct_size holds N if a non-custom structuring element is being used
@@ -143,16 +142,12 @@ GradData* GradData::gen_dilate_erode(bool isdilate, int mode, int struct_size, s
 			custom_data = custom_struct.data(); //get a pointer to the underlying array
 		}
 		output = c_gen_dilate_erode(x, y, c_device_data, isdilate, mode, struct_size, custom_data, custom_struct_size); //double check this
-		std::cout<<"Escaped from c_gen_dilate_erode\n";//TODO: remove
 		ret = new GradData(output, x, y);
-		std::cout<<"GradData done\n";
 		if (NULL == ret)
 		{
 			throw std::runtime_error("Failed to create GradData object in gen_dilate_erode.\n");
 		}
 		free(output);
-		free(custom_data);
-		std::cout<<"About to return from gen_dilate_erode\n";
 		return ret;
 
 #endif
@@ -559,7 +554,7 @@ ImageData* GradData::Gradient2Image(int mode)
 		free(data);
 		return ret;
 }
-//TODO: need to change this to accomodate custom dilation/erosion shapes
+
 GradData* GradData::Preprocess_Gray(int num_steps, unsigned char steps, unsigned char modes, int structsize, int custom_modes, std::vector<unsigned short> custom_struct, int custom_struct_size)
 {
 	// num_steps - how many steps in the processing (0 to 7)
@@ -577,7 +572,7 @@ GradData* GradData::Preprocess_Gray(int num_steps, unsigned char steps, unsigned
 	{
 		return processed_gray;
 	}
-	//TODO: need to change this to accomodate custom dilation/erosion shapes
+
 	for (int i = 0; i < num_steps; i++)
 	{
 		std::cout<<"Step " << (i+1) << " out of " << num_steps << "\n";//TODO: Remove
@@ -597,7 +592,6 @@ GradData* GradData::Preprocess_Gray(int num_steps, unsigned char steps, unsigned
 			}
 			temp_gray = processed_gray->gen_dilate_erode(false, mode, structsize, custom_struct, custom_struct_size);
 			delete(processed_gray);
-			std::cout<<"gen_erode done\n";
 			processed_gray = temp_gray;
 			temp_gray = NULL;
 		}
@@ -608,14 +602,13 @@ GradData* GradData::Preprocess_Gray(int num_steps, unsigned char steps, unsigned
 			}
 			temp_gray = processed_gray->gen_dilate_erode(true, mode, structsize, custom_struct, custom_struct_size);
 			delete(processed_gray);
-			std::cout<<"gen_dilate done\n";
 			processed_gray = temp_gray;
 			temp_gray = NULL;
 		}
 	}
 	return processed_gray;
 }
-//TODO: need to change this to accomodate custom dilation/erosion shapes
+
 GradData* GradData::Generate_Gradient(int mode, int struct_size, int xdiv, int ydiv, float konst, std::vector<unsigned short> custom_struct, int custom_struct_size)
 {
 	GradData* dilate = NULL;

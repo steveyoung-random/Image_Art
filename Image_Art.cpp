@@ -870,11 +870,8 @@ int main(int argc, char** argv)
 			for (w_size = 3; w_size <= preproc_windowsize; w_size += (int)(((preproc_windowsize - 3) / 5)))
 			{
 				preprocessed_gray = gray->Preprocess_Gray(4, steps, modes, w_size, custom_modes, custom_struct, custom_struct_size);
-				std::cout<<"Finished Preprocess_Gray\n";//TODO: remove
 				edge = preprocessed_gray->Generate_Gradient(1, gradthickness, xdiv, ydiv, k);
-				std::cout<<"Finished Generate_Gradient\n";
 				gray_image = edge->Gradient2Image(0);
-				std::cout<<"Gradient2Image\n";
 				temppath = path;
 				temppath.append(newname).append("_edge_").append(std::to_string(w_size));
 				gray_image->write_file(temppath);
